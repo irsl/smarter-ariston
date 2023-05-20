@@ -42,7 +42,7 @@ def img_transform(cropped_image):
     #blur = cv2.GaussianBlur(gray,(3,3),0)
     #thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU )[1]
     
-    thresh = cv2.adaptiveThreshold(gray,255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 37, -12)
+    thresh = cv2.adaptiveThreshold(gray,255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 37, -26)
     
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 5))
     thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
@@ -213,7 +213,7 @@ def process_img(img_path):
         # compute the width and height of each of the 7 segments
         # we are going to examine
         (roiH, roiW) = roi.shape
-        (dW, dH) = (int(roiW * 0.25), int(roiH * 0.16))
+        (dW, dH) = (int(roiW * 0.25), int(roiH * 0.15))
         dHC = int(roiH * 0.05)
 
         # define the set of 7 segments
@@ -224,7 +224,7 @@ def process_img(img_path):
             ((0, (h // 2) - dHC) , (w, (h // 2) + dHC)), # center
             ((0, h // 2), (dW, h)),	                     # bottom-left
             ((w - dW, h // 2), (w, h)),	                 # bottom-right
-            ((0, h - dH), (w, h))	                     # bottom
+            ((0, h - dH), (w, h))                        # bottom
         ]
         on = [0] * len(segments)
         
@@ -244,7 +244,7 @@ def process_img(img_path):
             # if the total number of non-zero pixels is greater than
             # 50% of the area, mark the segment as "on"
             eprint("flood", d, i, SEGMENT_NAMES[i], total / float(area))
-            if total / float(area) > 0.53:
+            if total / float(area) > 0.50:
                 on[i]= 1
 
         
