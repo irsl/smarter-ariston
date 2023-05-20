@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html><head>
+<title>Water!</title>
+<style>
+.columns {
+	margin: 10px;
+	clear: both;
+}
+.columns div {
+	width: 49%;
+    float:left;
+	text-align: center;
+}
+.columns div img {
+	max-width: 100%
+}
+#responsetext {
+ white-space: pre-wrap;       /* css-3 */
+ white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+ white-space: -pre-wrap;      /* Opera 4-6 */
+ white-space: -o-pre-wrap;    /* Opera 7 */
+ word-wrap: break-word;       /* Internet Explorer 5.5+ */
+ font-family: 'Courier New', monospace;
+}
+
+#responseresult {
+	font-size: 44pt;
+	font-family: 'Courier New', monospace;
+}
+</style>
+</head><body>
+
+<center>
+	<button id='get_temperature'>Get temperature</button></div>
+</center>
+<div>
+		<pre id='responsetext'></pre>
+</div>
+<div class="columns">
+	<div id='responsehtml'></div>
+	<div id='responseresult'></div>
+</div>
+<br style="clear:both"/>
+
+<canvas id="myChart" style="width:100%;max-height:400px"></canvas> 
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="/oboe-browser.min.js"></script>
+<script>
+$("#get_temperature").click(function(){
+  $("#get_temperature").prop('disabled', true);
+  ["html","text","result"].forEach(x => {
+	$("#response"+x).text("")
+  })
+  $("#responsetext").append("Querying the current temperature...\n")
+  
+  oboe({
+	  url: "/temperature",
+	  method: 'POST',
+  })
+   .node('', function(name){
+      console.log('You have a friend called', name);
+   })
+  .done(function(things) {
+	  if(things.type == "ready") {
+		  $("#get_temperature").prop('disabled', false)
+		  refreshChart();
+		  return
+	  }
+      $("#response"+things.type).append(things.data+"\n")	 
+  })
+  .fail(function() {
+      $("#responsetext").append("fail\n")
+	  $("#get_temperature").prop('disabled', false);
+  });
+})
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon"></script>
+
+<script>
+var myChart
+function refreshChart() {
+  $.getJSON("/fetch", function( data ) {
+	if (myChart)
+		myChart.destroy();
+		myChart = null
+	myChart = new Chart('myChart', {
+	  type: 'line',
+	  data: {
+		datasets: [{
+		  label: 'Temperature',
+		  data: data,               
+		  backgroundColor: 'transparent',
+		  borderColor: 'red',
+		  borderWidth: 2,
+		  tension: 0.5
+		}]
+	  },
+	  options: {
+		scales: {
+		  x: {
+			type: 'time',
+			time: {
+			  unit: 'minute',
+			  displayFormats: {
+				  minute: 'DD T'
+			  },
+			  tooltipFormat: 'DD T'
+			},
+			title: {
+			  display: true,
+			  text: 'Date'
+			}
+		  },
+		  y: {
+			title: {
+			  display: true,
+			  text: 'temperature'
+			}
+		  }
+		}
+	  }
+	});
+
+  });
+}
+
+refreshChart();
+</script>
+</body></html>
