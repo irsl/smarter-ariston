@@ -74,7 +74,7 @@ def followup_logic():
         time.sleep(PERIODIC_FOLLOWUP_SLEEP)
         r = (None,)
         try:
-            eprint("Periodic query attempt...")
+            eprint("Followup query attempt...")
             r = query_temperature()
         except:
             pass
