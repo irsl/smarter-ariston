@@ -275,7 +275,7 @@ def cron_thread():
     while True:
         if pycron.is_now(PERIODIC_QUERY_CRON):
             eprint('Running periodic query')
-            query_temperature(restart_is_fine=True)
+            query_temperature(restart_is_fine=True, save_pix=True)
             time.sleep(60)               # The process should take at least 60 sec
                                          # to avoid running twice in one minute
         else:
