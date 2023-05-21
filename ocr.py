@@ -198,8 +198,9 @@ def process_img(img_path):
             aimage = image.copy()
             cv2.polylines(aimage, manual_displaybox_cnt, True, color, 3)
             save_debug_img(aimage, img_basepath, "03-manual-displaybox.png")
-        display_lx = alogo_left[0] + 20
-        display_rx = alogo_right[0] - 20
+        eprint("hello", alogo_width, alogo_height)
+        display_lx = alogo_left[0] + int(alogo_width/10)
+        display_rx = alogo_right[0] - int(alogo_width/4)
         display_ty = alogo_top[1] + 20
         display_by = alogo_bottom[1] - 20
         display_box = np.array([
@@ -256,7 +257,7 @@ def process_img(img_path):
     cnts = imutils.grab_contours(cnts)
     
     # sometimes when the picture is excellent quality we need to merge close contours
-    if len(cnts) > 15:
+    if len(cnts) >= 13:
         cnts = agglomerative_cluster(cnts, 3)
     
     digitCnts = []
