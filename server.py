@@ -120,15 +120,18 @@ def _query_temperature_locked(restart_is_fine = False, callback = None, save_pix
     elif not result:
         acallback("Failed reading the digits...")
 
+    if save_pix:
+        acallback("image: "+b_display_box)
+
     if (p.returncode != 0 or not result) and restart_is_fine:
-        if save_pix:
-            acallback("image: "+b_display_box)
         acallback("Restarting the heater...")
         p = subprocess.run([TAPOPLUG_PATH, TAPOPLUG_IP, "off", "on"])
         if p.returncode != 0:
             acallback("Failed to restart the heater...")
             return (result, b_full_picture, b_display_box, now)
         acallback("Heater restarted...")
+        # Waiting a few seconds as it displays 88 at start
+        time.sleep(3)
         return _query_temperature_locked(False, callback, save_pix)
 
     return (result, b_full_picture, b_display_box, now)
@@ -187,24 +190,6 @@ class StreamServer(BaseHTTPRequestHandler):
     def e404(self):
         self.send_response(404)
         self.end_headers()
-    
-    def serve_index(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
-
-        # header
-        data = "<!DOCTYPE html><html><head><title>Water!</title><style></style></head><body>\n"
-        data+= "<button id='get_temperature'>Get temperature</button>\n"
-
-
-        data += "<div id='responsehtml'></div>\n"
-        data += "<pre id='responsetext'>\n"
-        data += "</pre>\n"
-
-        # footer
-        data += "</body></html>\n"
-        self.wfile.write(data.encode())    
 
     def serve_temperature(self):
         def acallback(msg):
@@ -219,8 +204,16 @@ class StreamServer(BaseHTTPRequestHandler):
         self.send_header('Connection', 'keep-alive')
         self.send_header('Transfer-Encoding', 'chunked')
         self.end_headers()
+        
+        content_len = int(self.headers.get('Content-Length'))
+        post_body = self.rfile.read(content_len)
+        payload={"force": False}
+        try:
+            payload = json.loads(post_body)
+        except:
+            pass
 
-        re = query_temperature(restart_is_fine=True,save_pix=True,callback=acallback)
+        re = query_temperature(restart_is_fine=payload["force"],save_pix=True,callback=acallback)
         self._send_chunk({ "type": "html", "data": f"<a href='{re[1]}'><img src='{re[2]}'></a>" })
         if re[0]:
             self._send_chunk({ "type": "result", "data": re[0] })
@@ -235,7 +228,7 @@ class StreamServer(BaseHTTPRequestHandler):
         n = int(time.time()) - 3 * 86400
         response = []
         db = get_db()
-        for row in db.execute("SELECT ts*1000, temp FROM temperature WHERE ts > ?", (n,)):
+        for row in db.execute("SELECT ts*1000, temp FROM temperature WHERE ts > ? ORDER BY ts", (n,)):
             response.append({"x":row[0], "y": row[1]})
         self.wfile.write(json.dumps(response).encode())  
 

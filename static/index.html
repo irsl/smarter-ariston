@@ -31,7 +31,8 @@
 </head><body>
 
 <center>
-	<button id='get_temperature'>Get temperature</button></div>
+	<button class='get_temperature'>Refresh</button></div>
+	<button class='get_temperature'>Force refresh</button></div>
 </center>
 <div>
 		<pre id='responsetext'></pre>
@@ -47,7 +48,8 @@
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="/oboe-browser.min.js"></script>
 <script>
-$("#get_temperature").click(function(){
+$(".get_temperature").click(function(){
+  payload = {force: $(this).text().includes("Force")}
   $("#get_temperature").prop('disabled', true);
   ["html","text","result"].forEach(x => {
 	$("#response"+x).text("")
@@ -57,6 +59,7 @@ $("#get_temperature").click(function(){
   oboe({
 	  url: "/temperature",
 	  method: 'POST',
+	  body: payload,
   })
    .node('', function(name){
       console.log('You have a friend called', name);
@@ -82,7 +85,19 @@ $("#get_temperature").click(function(){
 
 <script>
 var myChart
-function refreshChart() {
+function secondsToHms(d) {
+    d = Number(d);
+    var h = Math.floor(d / 3600);
+    var m = Math.floor(d % 3600 / 60);
+    var s = Math.floor(d % 3600 % 60);
+
+    var hDisplay = h > 0 ? h + (h == 1 ? " hour, " : " hours, ") : "";
+    var mDisplay = m > 0 ? m + (m == 1 ? " minute, " : " minutes, ") : "";
+    var sDisplay = s > 0 ? s + (s == 1 ? " second" : " seconds") : "";
+    return hDisplay + mDisplay + sDisplay; 
+}
+
+function refreshChart(showElapsed) {
   $.getJSON("/fetch", function( data ) {
 	if (myChart)
 		myChart.destroy();
@@ -124,10 +139,19 @@ function refreshChart() {
 		}
 	  }
 	});
+	
+	if ((showElapsed) && (data.length > 0)) {
+		var mostRecent = data[data.length -1]
+		var current = Date.now()
+		var elapsedSeconds = Math.floor((current - mostRecent.x) / 1000)
+		var elapsedText = secondsToHms(elapsedSeconds)
+		$("#responsehtml").append("The temperate "+elapsedText+" was:")
+		$("#responseresult").append(mostRecent.y)
+	}
 
   });
 }
 
-refreshChart();
+refreshChart(true);
 </script>
 </body></html>

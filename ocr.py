@@ -7,6 +7,7 @@ import json
 from sys import argv
 from collections import namedtuple
 import imutils
+from imutils.perspective import four_point_transform
 import numpy as np
 
 DIGITS_LOOKUP = {
@@ -120,6 +121,7 @@ def process_img(img_path):
     cnts = imutils.grab_contours(cnts)
     cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
     ariston_logo_cnt = None
+    manual_displaybox_cnt = None
     
     color = (0, 0, 255)
     i = 0
@@ -133,37 +135,73 @@ def process_img(img_path):
         peri = cv2.arcLength(c, True)
         approx = cv2.approxPolyDP(c, 0.02 * peri, True)
         (x, y, w, h) = cv2.boundingRect(approx)
-        eprint("contour for log candidate", i, len(approx), w)
-        if len(approx) in [5,6] and w < 100:
+        l = len(approx)
+        eprint("contour for log candidate", i, l, w)
+        if l == 4 and w >180 and w < 220:
+            eprint("potential manual display boundary found")
+            manual_displaybox_cnt = c
+            break
+        elif l in [5,6] and w < 100:
+            eprint("potential ariston logo found")
             ariston_logo_cnt = c
             break
 
-    if ariston_logo_cnt is None:
-        eprint("logo not found")
+    if manual_displaybox_cnt is not None:
+        # extract the thermostat display, apply a perspective transform
+        # to it
+        #reshaped = manual_displaybox_cnt.reshape(-1, 1, 4, 2)
+        #warped = four_point_transform(gray, reshaped)
+        #output = four_point_transform(image, reshaped)
+        (alogo_left, alogo_right, alogo_top, alogo_bottom, alogo_width, alogo_height) = find_top_bottom(manual_displaybox_cnt)
+        if DEBUG_DIR:
+            eprint("manual display box cnt", alogo_left, alogo_right, alogo_top, alogo_bottom, alogo_width, alogo_height)
+            aimage = image.copy()
+            cv2.polylines(aimage, manual_displaybox_cnt, True, color, 3)
+            save_debug_img(aimage, img_basepath, "03-manual-displaybox.png")
+        display_lx = alogo_left[0] + 20
+        display_rx = alogo_right[0] - 20
+        display_ty = alogo_top[1] + 20
+        display_by = alogo_bottom[1] - 20
+        display_box = np.array([
+            [ display_lx, display_ty ],  # top left
+            [ display_rx, display_ty ],  # top right
+            [ display_rx, display_by ],  # bottom right
+            [ display_lx, display_by ],  # bottom left
+        ])
+        cnt_retrieval_mode = cv2.RETR_LIST
+        # a regular digit has width around 50px; this division results width around 20px
+        digit_one_upper_length = int(alogo_width/10)
+        eprint("digit_one_length", digit_one_upper_length)
+
+    elif ariston_logo_cnt is not None:
+        (alogo_left, alogo_right, alogo_top, alogo_bottom, alogo_width, alogo_height) = find_top_bottom(ariston_logo_cnt)
+        if DEBUG_DIR:
+            eprint("ariston logo cnt", alogo_left, alogo_right, alogo_top, alogo_bottom, alogo_width, alogo_height)
+            aimage = image.copy()
+            cv2.polylines(aimage, ariston_logo_cnt, True, color, 3)
+            save_debug_img(aimage, img_basepath, "03-logo.png")
+        display_lx = alogo_right[0] + int(alogo_width*2.4)
+        display_rx = alogo_right[0] + int(alogo_width*4.8)
+        display_ty = alogo_bottom[1] + int(alogo_height*1.6)
+        display_by = alogo_bottom[1] + int(alogo_height*2.8)
+        display_box = np.array([
+            [ display_lx, display_ty ],  # top left
+            [ display_rx, display_ty ],  # top right
+            [ display_rx, display_by ],  # bottom right
+            [ display_lx, display_by ],  # bottom left
+        ])
+        cnt_retrieval_mode = cv2.RETR_EXTERNAL
+        digit_one_upper_length = int(alogo_width/3)        
+    else:
+        eprint("displaybox not found")
         return
 
-    (alogo_left, alogo_right, alogo_top, alogo_bottom, alogo_width, alogo_height) = find_top_bottom(ariston_logo_cnt)
-    if DEBUG_DIR:
-        eprint("ariston logo cnt", alogo_left, alogo_right, alogo_top, alogo_bottom, alogo_width, alogo_height)
-        aimage = image.copy()
-        cv2.polylines(aimage, ariston_logo_cnt, True, color, 3)
-        save_debug_img(aimage, img_basepath, "03-logo.png")
-    display_lx = alogo_right[0] + int(alogo_width*2.4)
-    display_rx = alogo_right[0] + int(alogo_width*4.8)
-    display_ty = alogo_bottom[1] + int(alogo_height*1.6)
-    display_by = alogo_bottom[1] + int(alogo_height*2.8)
-    display_box = np.array([
-        [ display_lx, display_ty ],  # top left
-        [ display_rx, display_ty ],  # top right
-        [ display_rx, display_by ],  # bottom right
-        [ display_lx, display_by ],  # bottom left
-    ])
     if DEBUG_DIR:
         eprint("display box", display_box)
         aimage = image.copy()
         cv2.polylines(aimage, [display_box], True, color, 3)
         save_debug_img(aimage, img_basepath, "04-display-box-on-full.png")
-    
+
     cropped_test_img = image[display_ty:display_by, display_lx:display_rx]    
     save_display_pic = os.getenv("SAVE_DISPLAY_PATH")
     if save_display_pic:
@@ -174,7 +212,7 @@ def process_img(img_path):
 
     # find contours in the thresholded image, then initialize the
     # digit contours lists
-    cnts = cv2.findContours(thresh_cropped_test_img.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cv2.findContours(thresh_cropped_test_img.copy(), cnt_retrieval_mode, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
     digitCnts = []
 
@@ -202,6 +240,8 @@ def process_img(img_path):
     # loop over each of the digits
     for c in digitCnts:
         d+=1
+        if d > 2:
+            break
         # extract the digit ROI
         (x, y, w, h) = cv2.boundingRect(c)
         eprint("bounding", d, x, y, w, h)
@@ -248,7 +288,7 @@ def process_img(img_path):
                 on[i]= 1
 
         
-        if w < int(alogo_width/3): # this is super thin, probably digit 1. the horizontal ones dont make a sense here
+        if w < digit_one_upper_length: # this is super thin, probably digit 1. the horizontal ones dont make a sense here
             on[0] = 0 # top
             on[3] = 0 # center
             on[6] = 0 # bottom
@@ -258,8 +298,8 @@ def process_img(img_path):
             on[4] = 0
 
         # lookup the digit and draw it on the image
-        eprint("digits slices", on)
         digit = DIGITS_LOOKUP.get(tuple(on))
+        eprint("digits slices", on, digit)
         if digit is None:
             return
         result += str(digit)
