@@ -23,7 +23,7 @@ from datetime import datetime
 LISTEN_PORT=int(os.getenv("LISTEN_PORT") or "80")
 DATADIR=os.getenv("DATADIR") or "/tmp"
 DB_PATH=os.getenv("DB_PATH") or os.path.join(DATADIR,"water.db")
-STATICDIR=os.getenv("STATICDIR") or os.path.join(os.path.dirname(__file__), "static")
+STATICDIR=os.getenv("STATICDIR") or os.path.dirname(__file__)
 
 CLEAN_OLDER_THAN_DAYS=int(os.getenv("CLEAN_OLDER_THAN_DAYS") or "30")
 CLEAN_SLEEP=int(os.getenv("CLEAN_SLEEP") or "86400")
@@ -220,17 +220,26 @@ class StreamServer(BaseHTTPRequestHandler):
         self._send_chunk({ "type": "ready" })
         self._send_chunk()
 
-    def serve_fetch(self):
+    def _send_json_response(self, response):
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
-        # last 3 days
+        self.wfile.write(json.dumps(response).encode())  
+        
+    def _fetch(self, limit = None):
         n = int(time.time()) - 3 * 86400
         response = []
         db = get_db()
-        for row in db.execute("SELECT ts*1000, temp FROM temperature WHERE ts > ? ORDER BY ts", (n,)):
+        for row in db.execute("SELECT ts*1000, temp FROM temperature WHERE ts > ? ORDER BY ts DESC " + (f"LIMIT {limit}" if limit else ""), (n,)):
             response.append({"x":row[0], "y": row[1]})
-        self.wfile.write(json.dumps(response).encode())  
+        return response
+    
+    def serve_fetch(self, limit = None):
+        self._send_json_response(self._fetch(limit))
+    
+    def serve_latest(self):
+        r = self._fetch(1)[0]["y"]
+        self._send_json_response(r)
 
     def do_POST(self):
         if self.path == "/temperature":
@@ -247,6 +256,10 @@ class StreamServer(BaseHTTPRequestHandler):
 
         if self.path == "/fetch":
             self.serve_fetch()
+            return
+
+        if self.path == "/latest":
+            self.serve_latest()
             return
 
         if self.path.endswith(".png") and "?" not in self.path and ".." not in self.path:

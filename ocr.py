@@ -116,6 +116,7 @@ def calculate_contour_distance(contour1, contour2):
 def merge_contours(contour1, contour2):
     return np.concatenate((contour1, contour2), axis=0)
 
+# this is borrowed from here: https://inf.news/en/news/750c405b8bcdb61dda3d24ee49855c74.html
 def agglomerative_cluster(contours, threshold_distance=40.0):
     current_contours = list(contours)
     while len(current_contours) > 1:
@@ -198,7 +199,6 @@ def process_img(img_path):
             aimage = image.copy()
             cv2.polylines(aimage, manual_displaybox_cnt, True, color, 3)
             save_debug_img(aimage, img_basepath, "03-manual-displaybox.png")
-        eprint("hello", alogo_width, alogo_height)
         display_lx = alogo_left[0] + int(alogo_width/10)
         display_rx = alogo_right[0] - int(alogo_width/4)
         display_ty = alogo_top[1] + 20
