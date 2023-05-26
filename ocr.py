@@ -43,7 +43,7 @@ def img_transform(cropped_image):
     #blur = cv2.GaussianBlur(gray,(3,3),0)
     #thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU )[1]
     
-    thresh = cv2.adaptiveThreshold(gray,255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 37, -26)
+    thresh = cv2.adaptiveThreshold(gray,255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 37, -30)
     
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 5))
     thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
@@ -200,7 +200,7 @@ def process_img(img_path):
             cv2.polylines(aimage, manual_displaybox_cnt, True, color, 3)
             save_debug_img(aimage, img_basepath, "03-manual-displaybox.png")
         display_lx = alogo_left[0] + int(alogo_width/10)
-        display_rx = alogo_right[0] - int(alogo_width/4)
+        display_rx = alogo_right[0] - int(alogo_width/3.5)
         display_ty = alogo_top[1] + 20
         display_by = alogo_bottom[1] - 20
         display_box = np.array([
@@ -257,7 +257,7 @@ def process_img(img_path):
     cnts = imutils.grab_contours(cnts)
     
     # sometimes when the picture is excellent quality we need to merge close contours
-    if len(cnts) >= 13:
+    if len(cnts) >= 11:
         cnts = agglomerative_cluster(cnts, 3)
     
     digitCnts = []
@@ -274,7 +274,7 @@ def process_img(img_path):
             save_debug_img(aimage, img_basepath, "07-digit-cnt-"+str(d)+".png")
 
         # if the contour is sufficiently large, it must be a digit
-        if (w >= 10 and w <= 55) and (h >= 44 and h <= 75):
+        if (w >= 10 and w <= 57) and (h >= 44 and h <= 75):
             eprint("saving digit", d, x, y, w, h)
             digitCnts.append(c)
     if len(digitCnts) < 2:
