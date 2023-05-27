@@ -145,7 +145,7 @@ function refreshChart(showElapsed) {
 		var current = Date.now()
 		var elapsedSeconds = Math.floor((current - mostRecent.x) / 1000)
 		var elapsedText = secondsToHms(elapsedSeconds)
-		$("#responsehtml").append("The temperate "+elapsedText+" was:")
+		$("#responsehtml").append("The temperature "+elapsedText+" was:")
 		$("#responseresult").append(mostRecent.y)
 	}
 
