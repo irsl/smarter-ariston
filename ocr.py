@@ -308,7 +308,7 @@ def process_img(img_path):
             ((w - dW, 0), (w, h // 2)),	                 # top-right
             ((0, (h // 2) - dHC) , (w, (h // 2) + dHC)), # center
             ((0, h // 2), (dW, h)),	                     # bottom-left
-            ((w - int(dW * 1.1), h // 2), (w- int(dW * 0.1), h)),	                 # bottom-right
+            ((w - int(dW * 1.2), h // 2), (w- int(dW * 0.2), h)),	                 # bottom-right
             ((0, h - dH), (w, h))                        # bottom
         ]
         on = [0] * len(segments)
