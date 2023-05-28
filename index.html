@@ -40,6 +40,8 @@
 		</table>	
 	</div>
 </div>
+<br style="clear:both"/>
+
 <div>
 		<pre id='responsetext'></pre>
 </div>
@@ -94,7 +96,6 @@ const footer = (tooltipItems) => {
   if(tooltipItems.length <= 0) return;
   if(tooltipItems[0].dataset.label == 'Temperature') return;
   let sum = 0;
-console.log("hello", tooltipItems)
   tooltipItems.forEach(function(tooltipItem) {
     sum += tooltipItem.parsed.y;
   });
@@ -115,13 +116,6 @@ function secondsToHms(d) {
 }
 
 function refreshChart(showElapsed) {
-  $.getJSON("/metadata", function( data ) {
-	var t = $("#metadata")
-	Object.keys(data).forEach(function(k) {
-		v = data[k]
-		t.append("<tr><td>"+k+"</td><td>"+v+"</td></tr>")
-	})
-  })
   $.getJSON("/fetch", function( data ) {
 	if (myChartTemp)
 		myChartTemp.destroy();
@@ -195,6 +189,17 @@ function refreshChart(showElapsed) {
   });
 }
 
+function refreshMetadata() {
+  $.getJSON("/metadata", function( data ) {
+	var t = $("#metadata")
+	Object.keys(data).forEach(function(k) {
+		v = data[k]
+		t.append("<tr><td>"+k+"</td><td>"+v+"</td></tr>")
+	})
+  })
+}
+
+refreshMetadata()
 refreshChart(true);
 </script>
 </body></html>

@@ -253,13 +253,13 @@ def do_the_job(ip, *states):
         ints = map(int, states)
         re["energy_data"] = tp.getEnergyData(*ints)
     elif len(states) > 0:
-        re.states = []
+        re["states"] = []
         remainingStates = len(states)    
         for state in states:
             if state == "on":
-                re.states.append(tp.turnOn())
+                re["states"].append(tp.turnOn())
             elif state == "off":
-                re.states.append(tp.turnOff())
+                re["states"].append(tp.turnOff())
             else:
                 raise Exception("invalid state, must be on or off (or 3 numbers to retrieve energy data)")
             remainingStates-= 1
