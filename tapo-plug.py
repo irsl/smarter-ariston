@@ -235,7 +235,7 @@ class TapoPlug():
             errorMessage = self.errorCodes.get(str(errorCode))
             raise Exception(f"Error Code: {errorCode}, {errorMessage}")
 
-        return re["result"]
+        return re.get("result")
 
     def getEnergyUsage(self):
         return self._send_request("get_energy_usage")
