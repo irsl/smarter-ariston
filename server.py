@@ -242,7 +242,7 @@ class StreamServer(BaseHTTPRequestHandler):
         n = now - 3 * 86400
         response = []
         db = get_db()
-        for row in db.execute("SELECT ts_start*1000, (ts_end-1)*1000, usage/10 FROM energy_data WHERE ts_start > ? ORDER BY ts_start DESC " + (f"LIMIT {limit}" if limit else ""), (n,)):
+        for row in db.execute("SELECT ts_start*1000, (ts_end-1)*1000, usage/10 FROM energy_data WHERE ts_start > ? ORDER BY ts_start " + (f"LIMIT {limit}" if limit else ""), (n,)):
             response.append({"x":row[0], "y": row[2]})
             response.append({"x":row[1], "y": row[2]})
         return response

@@ -99,7 +99,7 @@ const footer = (tooltipItems) => {
   tooltipItems.forEach(function(tooltipItem) {
     sum += tooltipItem.parsed.y;
   });
-  return 'Energy consumption: ' + (sum*10) + "kWh";
+  return 'Energy consumption: ' + (sum*10) + " Wh ("+(sum*10/1000)+" kWh)";
 };
 
 var myChartTemp
