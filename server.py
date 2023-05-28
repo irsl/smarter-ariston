@@ -351,9 +351,13 @@ def energy_thread():
                     if ts_end_hour < 0:
                         ts_end_hour = 23
                     energy_usages_in_the_last_24h = resp["energy_data"]["data"]
-                    usage = energy_usages_in_the_last_24h[ts_end_hour]
-                    eprint("success, usage was:", usage)
-                    cur.execute("INSERT OR REPLACE INTO energy_data (ts_start, ts_end, usage) VALUES(?,?,?)", (ts_start, ts_end, usage))
+                    while ts_end_hour >= 0:
+                        usage = energy_usages_in_the_last_24h[ts_end_hour]
+                        eprint("energy usage", ts_start, ts_end, usage)
+                        cur.execute("INSERT OR REPLACE INTO energy_data (ts_start, ts_end, usage) VALUES(?,?,?)", (ts_start, ts_end, usage))
+                        ts_end_hour -= 1
+                        ts_start -= 3600
+                        ts_end -= 3600
 
                     db.commit()
                 else:
