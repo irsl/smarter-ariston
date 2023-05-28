@@ -30,10 +30,16 @@
 </style>
 </head><body>
 
-<center>
-	<button class='get_temperature'>Refresh</button></div>
-	<button class='get_temperature'>Force refresh</button></div>
-</center>
+<div class="columns">
+	<div>
+		<button class='get_temperature'>Refresh</button>
+		<button class='get_temperature'>Force refresh</button>
+	</div>
+	<div>
+		<table id="metadata">
+		</table>	
+	</div>
+</div>
 <div>
 		<pre id='responsetext'></pre>
 </div>
@@ -109,6 +115,13 @@ function secondsToHms(d) {
 }
 
 function refreshChart(showElapsed) {
+  $.getJSON("/metadata", function( data ) {
+	var t = $("#metadata")
+	Object.keys(data).forEach(function(k) {
+		v = data[k]
+		t.append("<tr><td>"+k+"</td><td>"+v+"</td></tr>")
+	})
+  })
   $.getJSON("/fetch", function( data ) {
 	if (myChartTemp)
 		myChartTemp.destroy();

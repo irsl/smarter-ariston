@@ -247,6 +247,13 @@ class StreamServer(BaseHTTPRequestHandler):
             response.append({"x":row[1], "y": row[2]})
         return response
     
+    def serve_metadata(self):
+        db = get_db()
+        response = {}
+        for row in db.execute("SELECT * FROM metadata"):
+            response[row[0]] = row[1]
+        self._send_json_response(response)
+
     def serve_fetch(self, limit = None):
         now = int(time.time())
         temp = self._fetch_temp(limit, now)
@@ -274,6 +281,10 @@ class StreamServer(BaseHTTPRequestHandler):
             self.serve_fetch()
             return
 
+        if self.path == "/metadata":
+            self.serve_metadata()
+            return
+
         if self.path == "/latest":
             self.serve_latest()
             return
@@ -296,7 +307,8 @@ def init_db():
     db = get_db()
     cur = db.cursor()
     cur.execute("CREATE TABLE IF NOT EXISTS temperature (ts INT, temp INT)")
-    cur.execute("CREATE TABLE IF NOT EXISTS energy_data (ts_start INT, ts_end INT, usage INT)")
+    cur.execute("CREATE TABLE IF NOT EXISTS energy_data (ts_start INT PRIMARY KEY, ts_end INT, usage INT)")
+    cur.execute("CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT)")
     db.commit()
     eprint("Database initialized")
 
@@ -322,20 +334,27 @@ def energy_thread():
             try:
                 p = subprocess.run([TAPOPLUG_PATH, TAPOPLUG_IP, str(ts_end-2), str(ts_end-1), "60"], stdout=subprocess.PIPE)
                 if p.returncode == 0:
-                    dt = datetime.fromtimestamp(ts_end)
+                    resp = json.loads(p.stdout)
+
+                    db = get_db()
+                    cur = db.cursor()
+                    
+                    for k in ["today_runtime", "month_runtime", "today_energy", "month_energy"]:
+                        v = resp["energy_usage"][k]
+                        cur.execute("INSERT OR REPLACE INTO metadata (key, value) VALUES(?,?)", (k, v))
+
+                    dt = datetime.fromtimestamp(ts_end)                    
                     # if the current time is 21:00, then we are interested in the energy usage between 20:00 and 21:00
                     # that means, the slot in the return array should be 20
                     ts_end_hour = dt.hour - 1
                     # unless it is midnight, then we are looking for the energy usage of 23:00 -24:00 from yesterday, slot 23
                     if ts_end_hour < 0:
                         ts_end_hour = 23
-                    energy_data_resp = json.loads(p.stdout)
-                    energy_usages_in_the_last_24h = energy_data_resp["result"]["data"]
+                    energy_usages_in_the_last_24h = resp["energy_data"]["data"]
                     usage = energy_usages_in_the_last_24h[ts_end_hour]
                     eprint("success, usage was:", usage)
-                    db = get_db()
-                    cur = db.cursor()
-                    cur.execute("INSERT INTO energy_data (ts_start, ts_end, usage) VALUES(?,?,?)", (ts_start, ts_end, usage))
+                    cur.execute("INSERT OR REPLACE INTO energy_data (ts_start, ts_end, usage) VALUES(?,?,?)", (ts_start, ts_end, usage))
+
                     db.commit()
                 else:
                     eprint("Failed to read energy data of the heater...")

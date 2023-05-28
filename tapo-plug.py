@@ -228,12 +228,14 @@ class TapoPlug():
         SecurePassthroughPayload = {"method":"securePassthrough","params":{"request": EncryptedPayload}}
         r = self.session.post(URL, json=SecurePassthroughPayload, headers=headers, timeout=2)
         decryptedResponse = self.tpLinkCipher.decrypt(r.json()["result"]["response"])
-        #if ast.literal_eval(decryptedResponse)["error_code"] != 0:
-        #    errorCode = ast.literal_eval(decryptedResponse)["error_code"]
-        #    errorMessage = self.errorCodes[str(errorCode)]
-        #    raise Exception(f"Error Code: {errorCode}, {errorMessage}")
 
-        return json.loads(decryptedResponse)
+        re = json.loads(decryptedResponse)
+        errorCode = re.get("error_code")
+        if errorCode:
+            errorMessage = self.errorCodes.get(str(errorCode))
+            raise Exception(f"Error Code: {errorCode}, {errorMessage}")
+
+        return re["result"]
 
     def getEnergyUsage(self):
         return self._send_request("get_energy_usage")
@@ -246,25 +248,24 @@ def do_the_job(ip, *states):
     tp.handshake()
     tp.login()
     
-    if len(states) == 0:
-        return({"info": tp.getDeviceInfo()["result"], "energy_usage": tp.getEnergyUsage()["result"]})
-
+    re = {"device_info": tp.getDeviceInfo(), "energy_usage": tp.getEnergyUsage()}
     if len(states) == 3 and states[0].isdigit():
         ints = map(int, states)
-        return tp.getEnergyData(*ints)
-
-    eprint(tp.getDeviceInfo(), states)
-    remainingStates = len(states)    
-    for state in states:
-        if state == "on":
-            tp.turnOn()
-        elif state == "off":
-            tp.turnOff()
-        else:
-            raise Exception("invalid state, must be on or off (or 3 numbers to retrieve energy data)")
-        remainingStates-= 1
-        if remainingStates:
-            time.sleep(delay)
+        re["energy_data"] = tp.getEnergyData(*ints)
+    elif len(states) > 0:
+        re.states = []
+        remainingStates = len(states)    
+        for state in states:
+            if state == "on":
+                re.states.append(tp.turnOn())
+            elif state == "off":
+                re.states.append(tp.turnOff())
+            else:
+                raise Exception("invalid state, must be on or off (or 3 numbers to retrieve energy data)")
+            remainingStates-= 1
+            if remainingStates:
+                time.sleep(delay)
+    return re
         
 
 if __name__ == "__main__":    
