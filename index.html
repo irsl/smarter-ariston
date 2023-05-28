@@ -177,8 +177,8 @@ function refreshChart(showElapsed) {
 	  }
 	});
 	
-	if ((showElapsed) && (data.length > 0)) {
-		var mostRecent = data[0]
+	if ((showElapsed) && (data.temp.length > 0)) {
+		var mostRecent = data.temp[0]
 		var current = Date.now()
 		var elapsedSeconds = Math.floor((current - mostRecent.x) / 1000)
 		var elapsedText = secondsToHms(elapsedSeconds)
