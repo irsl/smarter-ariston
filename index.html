@@ -43,7 +43,7 @@
 </div>
 <br style="clear:both"/>
 
-<canvas id="myChart" style="width:100%;max-height:400px"></canvas> 
+<canvas id="myChartTemp" style="width:100%;max-height:400px"></canvas> 
 
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="/oboe-browser.min.js"></script>
@@ -84,7 +84,18 @@ $(".get_temperature").click(function(){
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon"></script>
 
 <script>
-var myChart
+const footer = (tooltipItems) => {
+  if(tooltipItems.length <= 0) return;
+  if(tooltipItems[0].dataset.label == 'Temperature') return;
+  let sum = 0;
+console.log("hello", tooltipItems)
+  tooltipItems.forEach(function(tooltipItem) {
+    sum += tooltipItem.parsed.y;
+  });
+  return 'Energy consumption: ' + (sum*10) + "kWh";
+};
+
+var myChartTemp
 function secondsToHms(d) {
     d = Number(d);
     var h = Math.floor(d / 3600);
@@ -99,22 +110,41 @@ function secondsToHms(d) {
 
 function refreshChart(showElapsed) {
   $.getJSON("/fetch", function( data ) {
-	if (myChart)
-		myChart.destroy();
-		myChart = null
-	myChart = new Chart('myChart', {
-	  type: 'line',
+	if (myChartTemp)
+		myChartTemp.destroy();
+		myChartTemp = null
+
+	myChartTemp = new Chart('myChartTemp', {
+      type: 'line',
 	  data: {
 		datasets: [{
 		  label: 'Temperature',
-		  data: data,               
+		  data: data.temp,               
 		  backgroundColor: 'transparent',
 		  borderColor: 'red',
 		  borderWidth: 2,
 		  tension: 0.5
-		}]
+		},
+			{
+				fill: 'origin',
+			  label: 'Energy consumption',
+			  data: data.energy,
+			  backgroundColor: "rgba(0, 0, 255, 0.1)",
+			  borderColor: 'blue',
+			  borderWidth: 1,
+			//  tension: 0.5
+			}
+		]
 	  },
 	  options: {
+
+		plugins: {
+		  tooltip: {
+			callbacks: {
+			  footer: footer,
+			}
+		  }
+		},
 		scales: {
 		  x: {
 			type: 'time',

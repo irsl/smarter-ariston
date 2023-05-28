@@ -226,19 +226,35 @@ class StreamServer(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(response).encode())  
         
-    def _fetch(self, limit = None):
-        n = int(time.time()) - 3 * 86400
+    def _fetch_temp(self, limit = None, now = 0):
+        if not now:
+            now = int(time.time)
+        n = now - 3 * 86400
         response = []
         db = get_db()
         for row in db.execute("SELECT ts*1000, temp FROM temperature WHERE ts > ? ORDER BY ts DESC " + (f"LIMIT {limit}" if limit else ""), (n,)):
             response.append({"x":row[0], "y": row[1]})
         return response
     
+    def _fetch_energy(self, limit = None, now = 0):
+        if not now:
+            now = int(time.time)
+        n = now - 3 * 86400
+        response = []
+        db = get_db()
+        for row in db.execute("SELECT ts_start*1000, (ts_end-1)*1000, usage/10 FROM energy_data WHERE ts_start > ? ORDER BY ts_start DESC " + (f"LIMIT {limit}" if limit else ""), (n,)):
+            response.append({"x":row[0], "y": row[2]})
+            response.append({"x":row[1], "y": row[2]})
+        return response
+    
     def serve_fetch(self, limit = None):
-        self._send_json_response(self._fetch(limit))
+        now = int(time.time())
+        temp = self._fetch_temp(limit, now)
+        energy = self._fetch_energy(limit, now)
+        self._send_json_response({"temp": temp, "energy": energy})
     
     def serve_latest(self):
-        r = self._fetch(1)[0]["y"]
+        r = self._fetch_temp(1)[0]["y"]
         self._send_json_response(r)
 
     def do_POST(self):
@@ -280,6 +296,7 @@ def init_db():
     db = get_db()
     cur = db.cursor()
     cur.execute("CREATE TABLE IF NOT EXISTS temperature (ts INT, temp INT)")
+    cur.execute("CREATE TABLE IF NOT EXISTS energy_data (ts_start INT, ts_end INT, usage INT)")
     db.commit()
     eprint("Database initialized")
 
@@ -294,10 +311,47 @@ def cron_thread():
         else:
             time.sleep(15)               # Check again in 15 seconds
 
+def energy_thread():
+    eprint('Energy thread started')
+    while True:
+        now = int(time.time())
+        if now % 3600 < 60:
+            eprint('Running energy usage query')
+            ts_end = int(now / 3600) * 3600
+            ts_start = ts_end - 3600
+            try:
+                p = subprocess.run([TAPOPLUG_PATH, TAPOPLUG_IP, str(ts_end-2), str(ts_end-1), "60"], stdout=subprocess.PIPE)
+                if p.returncode == 0:
+                    dt = datetime.fromtimestamp(ts_end)
+                    # if the current time is 21:00, then we are interested in the energy usage between 20:00 and 21:00
+                    # that means, the slot in the return array should be 20
+                    ts_end_hour = dt.hour - 1
+                    # unless it is midnight, then we are looking for the energy usage of 23:00 -24:00 from yesterday, slot 23
+                    if ts_end_hour < 0:
+                        ts_end_hour = 23
+                    energy_data_resp = json.loads(p.stdout)
+                    energy_usages_in_the_last_24h = energy_data_resp["result"]["data"]
+                    usage = energy_usages_in_the_last_24h[ts_end_hour]
+                    eprint("success, usage was:", usage)
+                    db = get_db()
+                    cur = db.cursor()
+                    cur.execute("INSERT INTO energy_data (ts_start, ts_end, usage) VALUES(?,?,?)", (ts_start, ts_end, usage))
+                    db.commit()
+                else:
+                    eprint("Failed to read energy data of the heater...")
+            except x:
+                eprint("error while retrieving energy data", x)
+            
+            time.sleep(60)               # The process should take at least 60 sec
+                                         # to avoid running twice in one minute
+        else:
+            time.sleep(55)               # Check again later
+
 def main():
     init_db()
     threading.Thread(target=cron_thread, args=()).start()
     threading.Thread(target=cleanup_thread, args=()).start()
+    threading.Thread(target=energy_thread, args=()).start()
     server = ThreadingHTTPServer(("0.0.0.0", LISTEN_PORT), StreamServer)
     eprint(f"server started on :{LISTEN_PORT}")
     server.serve_forever()
