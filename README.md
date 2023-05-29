@@ -10,3 +10,23 @@ https://pyimagesearch.com/2017/02/13/recognizing-digits-with-opencv-and-python/
 
 The Tapo part is heavily based on
 https://pip.pypa.io/en/stable/
+
+An example Ansible playbook to deploy it:
+
+```
+  - name: water
+    docker_container:
+      user: 1000:1000
+      name: water
+      image: ghcr.io/irsl/smarter-ariston
+      volumes:
+      - /data:/data
+      restart_policy: unless-stopped
+      env:
+        TZ=Europe/Budapest
+        TAPOPLUG_IP=10.6.8.113
+        TAPO_EMAIL=youremail
+        TAPO_PASSWORD=yourpassword
+        CAMURL=rtsp://10.6.8.146:8554/w1
+        DATADIR=/data
+```
