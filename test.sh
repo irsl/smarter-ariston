@@ -3,7 +3,7 @@
 unset DEBUG
 dir="$(dirname $0)"
 actual="$($dir/ocr.py testdata/*.png)"
-expected='[null, 50, 51, 42, 53, 44, 45, 46, 47, 48, 49, null, 53, 55, 50, 27, 27, 46, 50, 49, 50, 52, 58, 58, 57, null, 45]'
+expected='[null, 50, 51, 42, 53, 44, 45, 46, 47, 48, 49, null, 53, 55, 50, 27, 27, 46, 50, 49, 50, 52, 58, 58, 57, 51, null, 45]'
 
 echo Test finished: testdata/*.png
 if [ "$actual" != "$expected" ]; then

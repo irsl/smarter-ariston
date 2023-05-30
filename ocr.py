@@ -300,6 +300,10 @@ def process_img(img_path):
         (roiH, roiW) = roi.shape
         (dW, dH) = (int(roiW * 0.21), int(roiH * 0.15))
         dHC = int(roiH * 0.05)
+        
+        if w < digit_one_upper_length:
+            # this is super thin, probably digit 1. 20% is not enough
+            dW = dW * 3
 
         # define the set of 7 segments
         segments = [
@@ -332,7 +336,6 @@ def process_img(img_path):
             if total / float(area) > 0.44:
                 on[i]= 1
 
-        
         if w < digit_one_upper_length: # this is super thin, probably digit 1. the horizontal ones dont make a sense here
             on[0] = 0 # top
             on[3] = 0 # center
