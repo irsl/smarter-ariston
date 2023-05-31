@@ -32,6 +32,7 @@ SEGMENT_NAMES = [
   "bottom-right", 
   "bottom",
 ]
+MIN_FLOOD_PERCENTAGE = 0.44
 DEBUG_DIR = os.getenv("DEBUG")
 
 def eprint(*args, **kwargs):
@@ -274,10 +275,11 @@ def process_img(img_path):
             save_debug_img(aimage, img_basepath, "07-digit-cnt-"+str(d)+".png")
 
         # if the contour is sufficiently large, it must be a digit
-        if (w >= 10 and w <= 57) and (h >= 44 and h <= 75):
+        if (w >= 10 and w <= 57) and (h >= 44 and h <= 77):
             eprint("saving digit", d, x, y, w, h)
             digitCnts.append(c)
     if len(digitCnts) < 2:
+        eprint("we didn't find enough digits")
         return
     digitCnts = sort_contours(digitCnts, method="left-to-right")[0]
     result = ""
@@ -313,11 +315,10 @@ def process_img(img_path):
             ((0, (h // 2) - dHC) , (w, (h // 2) + dHC)), # center
             ((0, h // 2), (dW, h)),	                     # bottom-left
             ((w - int(dW * 1.2), h // 2), (w- int(dW * 0.2), h)),	                 # bottom-right
-            ((0, h - dH), (w, h))                        # bottom
+            ((0, h - int(dH*1.0)), (w, h-int(dH*0.0)))                        # bottom
         ]
         on = [0] * len(segments)
         
-    
         # loop over the segments
         for (i, ((xA, yA), (xB, yB))) in enumerate(segments):
             if DEBUG_DIR:
@@ -333,7 +334,7 @@ def process_img(img_path):
             # if the total number of non-zero pixels is greater than
             # 50% of the area, mark the segment as "on"
             eprint("flood", d, i, SEGMENT_NAMES[i], total / float(area))
-            if total / float(area) > 0.44:
+            if total / float(area) > MIN_FLOOD_PERCENTAGE:
                 on[i]= 1
 
         if w < digit_one_upper_length: # this is super thin, probably digit 1. the horizontal ones dont make a sense here
@@ -349,7 +350,20 @@ def process_img(img_path):
         digit = DIGITS_LOOKUP.get(tuple(on))
         eprint("digits slices", on, digit)
         if digit is None:
-            return
+            # the bottom of the display may have some noise, trying to workaround it
+            (xA, yA), (xB, yB) = ((0, h - int(dH*1.3)), (w, h-int(dH*0.3)))
+            segROI = roi[yA:yB, xA:xB]
+            total = cv2.countNonZero(segROI)
+            area = (xB - xA) * (yB - yA)
+
+            # if the total number of non-zero pixels is greater than
+            # 50% of the area, mark the segment as "on"
+            eprint("retried flood", d, i, SEGMENT_NAMES[i], total / float(area))
+            if total / float(area) > MIN_FLOOD_PERCENTAGE:
+                on[i]= 1
+            digit = DIGITS_LOOKUP.get(tuple(on))
+            if not digit:
+                return
         result += str(digit)
 
     return int(result)
