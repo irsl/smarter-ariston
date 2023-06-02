@@ -153,7 +153,7 @@ def process_img(img_path):
     image = imutils.resize(test_img, height=1080)
     save_debug_img(image, img_basepath, "00-input.png")
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    blurred = cv2.GaussianBlur(gray, (7, 7), 0)
     edged = cv2.Canny(blurred, 50, 200, 255)
     save_debug_img(edged, img_basepath, "01-edged.png")
     
@@ -164,11 +164,14 @@ def process_img(img_path):
     cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
     ariston_logo_cnt = None
     manual_displaybox_cnt = None
+    top_helper_cnt = None
     
     color = (0, 0, 255)
     i = 0
     for c in cnts:
         i+= 1
+        if i > 10:
+            break
         if DEBUG_DIR:
             aimage = image.copy()
             cv2.polylines(aimage, c, True, color, 3)
@@ -178,8 +181,12 @@ def process_img(img_path):
         approx = cv2.approxPolyDP(c, 0.02 * peri, True)
         (x, y, w, h) = cv2.boundingRect(approx)
         l = len(approx)
-        eprint("contour for log candidate", i, l, w)
-        if l == 4 and w >180 and w < 220:
+        eprint("contour for log candidate", i, l, w, h)
+        if l == 4 and w > 140 and w < 160 and h > 35 and h < 50:
+            eprint("potential top_helper_cnt found")
+            top_helper_cnt = c
+            break
+        elif l == 4 and w > 180 and w < 220:
             eprint("potential manual display boundary found")
             manual_displaybox_cnt = c
             break
@@ -188,7 +195,17 @@ def process_img(img_path):
             ariston_logo_cnt = c
             break
 
-    if manual_displaybox_cnt is not None:
+    if top_helper_cnt is not None:
+        (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(top_helper_cnt)
+        eprint("coordinates of top_helper_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
+        display_lx = fd_left[0] + 5
+        display_rx = fd_right[0] - 5
+        display_ty = fd_bottom[1] + 1
+        display_by = display_ty + int(fd_height*1.6)
+        digit_one_upper_length = int(fd_width / 6.7)
+        cnt_retrieval_mode = cv2.RETR_LIST
+        
+    elif manual_displaybox_cnt is not None:
         # extract the thermostat display, apply a perspective transform
         # to it
         #reshaped = manual_displaybox_cnt.reshape(-1, 1, 4, 2)
@@ -201,19 +218,12 @@ def process_img(img_path):
             cv2.polylines(aimage, manual_displaybox_cnt, True, color, 3)
             save_debug_img(aimage, img_basepath, "03-manual-displaybox.png")
         display_lx = alogo_left[0] + int(alogo_width/10)
-        display_rx = alogo_right[0] - int(alogo_width/3.5)
+        display_rx = alogo_right[0] - int(alogo_width/3.5) + 1
         display_ty = alogo_top[1] + 20
         display_by = alogo_bottom[1] - 20
-        display_box = np.array([
-            [ display_lx, display_ty ],  # top left
-            [ display_rx, display_ty ],  # top right
-            [ display_rx, display_by ],  # bottom right
-            [ display_lx, display_by ],  # bottom left
-        ])
         cnt_retrieval_mode = cv2.RETR_LIST
         # a regular digit has width around 50px; this division results width around 20px
         digit_one_upper_length = int(alogo_width/10)
-        eprint("digit_one_length", digit_one_upper_length)
 
     elif ariston_logo_cnt is not None:
         (alogo_left, alogo_right, alogo_top, alogo_bottom, alogo_width, alogo_height) = find_top_bottom(ariston_logo_cnt)
@@ -226,17 +236,19 @@ def process_img(img_path):
         display_rx = alogo_right[0] + int(alogo_width*4.8)
         display_ty = alogo_bottom[1] + int(alogo_height*1.6)
         display_by = alogo_bottom[1] + int(alogo_height*2.8)
-        display_box = np.array([
-            [ display_lx, display_ty ],  # top left
-            [ display_rx, display_ty ],  # top right
-            [ display_rx, display_by ],  # bottom right
-            [ display_lx, display_by ],  # bottom left
-        ])
         cnt_retrieval_mode = cv2.RETR_EXTERNAL
         digit_one_upper_length = int(alogo_width/3)        
     else:
         eprint("displaybox not found")
         return
+        
+    eprint("digit_one_length", digit_one_upper_length)
+    display_box = np.array([
+        [ display_lx, display_ty ],  # top left
+        [ display_rx, display_ty ],  # top right
+        [ display_rx, display_by ],  # bottom right
+        [ display_lx, display_by ],  # bottom left
+    ])
 
     if DEBUG_DIR:
         eprint("display box", display_box)
@@ -372,6 +384,7 @@ def process_img(img_path):
 def do_the_job(*imgs):
     re = []
     for img in imgs:
+        eprint("-----------", img)
         re.append(process_img(img))
     return re
     
