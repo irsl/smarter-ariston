@@ -153,7 +153,7 @@ def process_img(img_path):
     image = imutils.resize(test_img, height=1080)
     save_debug_img(image, img_basepath, "00-input.png")
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(gray, (7, 7), 0)
+    blurred = cv2.GaussianBlur(gray, (11, 11), 0)
     edged = cv2.Canny(blurred, 50, 200, 255)
     save_debug_img(edged, img_basepath, "01-edged.png")
     
@@ -182,7 +182,7 @@ def process_img(img_path):
         (x, y, w, h) = cv2.boundingRect(approx)
         l = len(approx)
         eprint("contour for log candidate", i, l, w, h)
-        if l == 4 and w > 140 and w < 160 and h > 35 and h < 50:
+        if l in [4, 5] and w > 140 and w < 160 and h > 35 and h < 60:
             eprint("potential top_helper_cnt found")
             top_helper_cnt = c
             break
@@ -190,10 +190,10 @@ def process_img(img_path):
             eprint("potential manual display boundary found")
             manual_displaybox_cnt = c
             break
-        elif l in [5,6] and w < 100:
+        elif ariston_logo_cnt is None and l in [5,6] and w < 100:
             eprint("potential ariston logo found")
             ariston_logo_cnt = c
-            break
+            # break
 
     if top_helper_cnt is not None:
         (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(top_helper_cnt)
@@ -287,7 +287,7 @@ def process_img(img_path):
             save_debug_img(aimage, img_basepath, "07-digit-cnt-"+str(d)+".png")
 
         # if the contour is sufficiently large, it must be a digit
-        if (w >= 10 and w <= 57) and (h >= 44 and h <= 77):
+        if (w >= 10 and w <= 59) and (h >= 44 and h <= 77):
             eprint("saving digit", d, x, y, w, h)
             digitCnts.append(c)
     if len(digitCnts) < 2:
