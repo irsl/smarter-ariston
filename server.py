@@ -313,6 +313,9 @@ def init_db():
     eprint("Database initialized")
 
 def cron_thread():
+    if PERIODIC_QUERY_CRON == "none":
+        eprint('Cron feature is disabled')
+        return
     eprint('Cron thread started')
     while True:
         if pycron.is_now(PERIODIC_QUERY_CRON):
