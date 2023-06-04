@@ -170,6 +170,7 @@ def process_img(img_path):
     ariston_logo_cnt = None
     manual_displaybox_cnt = None
     top_helper_cnt = None
+    outer_top_helper_cnt = None
     
     color = (0, 0, 255)
     i = 0
@@ -187,9 +188,13 @@ def process_img(img_path):
         (x, y, w, h) = cv2.boundingRect(approx)
         l = len(approx)
         eprint("contour for log candidate", i, l, w, h)
-        if l == 4 and w > 260 and w < 290 and h > 160 and h < 175:
-            eprint("potential top_helper_cnt found")
+        if l == 4 and w > 260 and w < 285 and h > 160 and h < 170:
+            eprint("potential top_helper_cnt found (inner)")
             top_helper_cnt = c
+            break
+        elif l == 6 and w >= 286 and w < 300 and h > 170 and h < 180:
+            eprint("potential top_helper_cnt found (outer)")
+            outer_top_helper_cnt = c
             break
         elif l == 4 and w > 180 and w < 220:
             eprint("potential manual display boundary found")
@@ -200,7 +205,17 @@ def process_img(img_path):
             ariston_logo_cnt = c
             # break
 
-    if top_helper_cnt is not None:
+    if outer_top_helper_cnt is not None:
+        (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(outer_top_helper_cnt)
+        eprint("coordinates of outer_top_helper_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
+        display_lx = fd_left[0] + 40
+        display_rx = fd_right[0] - int(fd_width*0.4)
+        display_ty = fd_bottom[1] + int(fd_height * 1.2)
+        display_by = display_ty + int(fd_height*0.55)
+        digit_one_upper_length = int(fd_width / 14)
+        cnt_retrieval_mode = cv2.RETR_LIST
+
+    elif top_helper_cnt is not None:
         (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(top_helper_cnt)
         eprint("coordinates of top_helper_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
         display_lx = fd_left[0] + 20
