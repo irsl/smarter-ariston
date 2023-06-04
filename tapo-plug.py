@@ -257,7 +257,7 @@ def do_the_job(ip, *states):
         re["energy_data"] = tp.getEnergyData(*ints)
     elif len(states) > 0:
         re["states"] = []
-        if only_when_unused and energy_usage["current_power"]:
+        if only_when_unused and energy_usage["current_power"] >= 1000:
             raise Exception(f"TAPO_ONLY_WHEN_UNUSED is set, and current_power is: {energy_usage['current_power']}")
         remainingStates = len(states)    
         for state in states:
