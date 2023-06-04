@@ -171,6 +171,8 @@ def process_img(img_path):
     manual_displaybox_cnt = None
     top_helper_cnt = None
     outer_top_helper_cnt = None
+    top_line_cnt = None
+    left_curly_stuff_cnt = None
     
     color = (0, 0, 255)
     i = 0
@@ -187,8 +189,16 @@ def process_img(img_path):
         approx = cv2.approxPolyDP(c, 0.02 * peri, True)
         (x, y, w, h) = cv2.boundingRect(approx)
         l = len(approx)
-        eprint("contour for log candidate", i, l, w, h)
-        if l == 4 and w > 260 and w < 285 and h > 160 and h < 170:
+        eprint("contour for log candidate", i, l, len(c), w, h)
+        if l == 3 and w > 1300 and w < 1450 and h > 80 and h < 120:
+            eprint("potential top line found")
+            top_line_cnt = c
+            break
+        elif l == 6 and len(c) > 300 and c[0][0][0] / 600 and w > 300 and w < 340 and h > 125 and h < 150:
+            eprint("potential left_curly_stuff_cnt found")
+            left_curly_stuff_cnt = c
+            break
+        elif l == 4 and w > 260 and w < 285 and h > 160 and h < 170:
             eprint("potential top_helper_cnt found (inner)")
             top_helper_cnt = c
             break
@@ -203,9 +213,34 @@ def process_img(img_path):
         elif ariston_logo_cnt is None and l in [5,6] and w < 100:
             eprint("potential ariston logo found")
             ariston_logo_cnt = c
+            # we dont break, we may find a better reference point
             # break
 
-    if outer_top_helper_cnt is not None:
+    if top_line_cnt is not None:
+        (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(top_line_cnt)
+        eprint("coordinates of top_line_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
+        box_width = int(fd_width / 8)
+        box_height = int(fd_width / 16)
+        display_lx = fd_left[0] + int(box_width * 4)
+        display_rx = display_lx + box_width
+        display_ty = fd_bottom[1] + int(box_height * 2.3)
+        display_by = display_ty + box_height
+        digit_one_upper_length = int(fd_width / 65)
+        cnt_retrieval_mode = cv2.RETR_LIST
+
+    elif left_curly_stuff_cnt is not None:
+        (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(left_curly_stuff_cnt)
+        eprint("coordinates of left_curly_stuff_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
+        box_width = int(fd_width / 2.1)
+        box_height = int(fd_width / 3.2)
+        display_lx = fd_right[0] + int(box_width * 1.3)
+        display_rx = display_lx + box_width
+        display_ty = fd_right[1]
+        display_by = display_ty + box_height
+        digit_one_upper_length = int(fd_width / 15)
+        cnt_retrieval_mode = cv2.RETR_LIST
+
+    elif outer_top_helper_cnt is not None:
         (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(outer_top_helper_cnt)
         eprint("coordinates of outer_top_helper_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
         display_lx = fd_left[0] + 40
