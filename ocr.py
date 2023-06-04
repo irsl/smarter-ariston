@@ -342,7 +342,7 @@ def process_img(img_path):
             save_debug_img(aimage, img_basepath, "07-digit-cnt-"+str(d)+".png")
 
         # if the contour is sufficiently large, it must be a digit
-        if (w >= 10 and w <= 59) and (h >= 44 and h <= 79):
+        if (w >= 10 and w <= 62) and (h >= 44 and h <= 79):
             eprint("saving digit", d, x, y, w, h)
             digitCnts.append(c)
     if len(digitCnts) < 2:
