@@ -29,6 +29,7 @@ CLEAN_OLDER_THAN_DAYS=int(os.getenv("CLEAN_OLDER_THAN_DAYS") or "30")
 CLEAN_SLEEP=int(os.getenv("CLEAN_SLEEP") or "86400")
 
 PERIODIC_QUERY_CRON=os.getenv("PERIODIC_QUERY_CRON") or "0 6-23 * * *" # https://github.com/kipe/pycron https://stackoverflow.com/questions/373335/how-do-i-get-a-cron-like-scheduler-in-python
+PERIODIC_ONLY_WHEN_UNUSED=int(os.getenv("PERIODIC_ONLY_WHEN_UNUSED") or "0")
 PERIODIC_FOLLOWUP_SLEEP=int(os.getenv("PERIODIC_FOLLOWUP_SLEEP") or "300")
 
 TEMPORARY_DISPLAYBOX = (os.getenv("TEMPORARY_DISPLAYBOX") or "0") == "1"
@@ -125,7 +126,10 @@ def _query_temperature_locked(restart_is_fine = False, callback = None, save_pix
 
     if (p.returncode != 0 or not result) and restart_is_fine:
         acallback("Restarting the heater...")
-        p = subprocess.run([TAPOPLUG_PATH, TAPOPLUG_IP, "off", "on"])
+        myenv = dict(os.environ)
+        if restart_is_fine == "unused":
+            myenv["TAPO_ONLY_WHEN_UNUSED"] = "1"
+        p = subprocess.run([TAPOPLUG_PATH, TAPOPLUG_IP, "off", "on"], env=myenv)
         if p.returncode != 0:
             acallback("Failed to restart the heater...")
             return (result, b_full_picture, b_display_box, now)
@@ -316,11 +320,12 @@ def cron_thread():
     if PERIODIC_QUERY_CRON == "none":
         eprint('Cron feature is disabled')
         return
-    eprint('Cron thread started')
+    eprint('Cron thread started, only_when_unused is: '+str(PERIODIC_ONLY_WHEN_UNUSED))
+    only_when_unused = "unused" if PERIODIC_ONLY_WHEN_UNUSED else True
     while True:
         if pycron.is_now(PERIODIC_QUERY_CRON):
             eprint('Running periodic query')
-            query_temperature(restart_is_fine=True, save_pix=True)
+            query_temperature(restart_is_fine=only_when_unused, save_pix=True)
             time.sleep(60)               # The process should take at least 60 sec
                                          # to avoid running twice in one minute
         else:

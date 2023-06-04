@@ -22,6 +22,7 @@ import json
 email = os.environ["TAPO_EMAIL"]
 password = os.environ["TAPO_PASSWORD"]
 delay = int(os.getenv("TAPO_DELAY") or "3")
+only_when_unused = int(os.getenv("TAPO_ONLY_WHEN_UNUSED") or "0")
 
 def eprint(*args, **kwargs):
     print(*args, **kwargs, file=sys.stderr)
@@ -248,12 +249,16 @@ def do_the_job(ip, *states):
     tp.handshake()
     tp.login()
     
-    re = {"device_info": tp.getDeviceInfo(), "energy_usage": tp.getEnergyUsage()}
+    device_info = tp.getDeviceInfo()
+    energy_usage = tp.getEnergyUsage()
+    re = {"device_info": device_info, "energy_usage": energy_usage}
     if len(states) == 3 and states[0].isdigit():
         ints = map(int, states)
         re["energy_data"] = tp.getEnergyData(*ints)
     elif len(states) > 0:
         re["states"] = []
+        if only_when_unused and energy_usage["current_power"]:
+            raise Exception(f"TAPO_ONLY_WHEN_UNUSED is set, and current_power is: {energy_usage['current_power']}")
         remainingStates = len(states)    
         for state in states:
             if state == "on":
