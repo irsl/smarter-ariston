@@ -154,12 +154,17 @@ def process_img(img_path):
     save_debug_img(image, img_basepath, "00-input.png")
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (11, 11), 0)
-    edged = cv2.Canny(blurred, 50, 200, 255)
+    
+    thresh = cv2.adaptiveThreshold(blurred,255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 37, -30)    
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 5))
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+    
+    edged = cv2.Canny(thresh, 50, 200, 255)
     save_debug_img(edged, img_basepath, "01-edged.png")
     
     # find contours in the edge map, then sort them by their
     # size in descending order
-    cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
     cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
     ariston_logo_cnt = None
@@ -287,7 +292,7 @@ def process_img(img_path):
             save_debug_img(aimage, img_basepath, "07-digit-cnt-"+str(d)+".png")
 
         # if the contour is sufficiently large, it must be a digit
-        if (w >= 10 and w <= 59) and (h >= 44 and h <= 77):
+        if (w >= 10 and w <= 59) and (h >= 44 and h <= 79):
             eprint("saving digit", d, x, y, w, h)
             digitCnts.append(c)
     if len(digitCnts) < 2:
