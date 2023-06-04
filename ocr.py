@@ -182,7 +182,7 @@ def process_img(img_path):
         (x, y, w, h) = cv2.boundingRect(approx)
         l = len(approx)
         eprint("contour for log candidate", i, l, w, h)
-        if l in [4, 5] and w > 140 and w < 160 and h > 35 and h < 60:
+        if l == 4 and w > 260 and w < 290 and h > 160 and h < 175:
             eprint("potential top_helper_cnt found")
             top_helper_cnt = c
             break
@@ -198,13 +198,13 @@ def process_img(img_path):
     if top_helper_cnt is not None:
         (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(top_helper_cnt)
         eprint("coordinates of top_helper_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
-        display_lx = fd_left[0] + 5
-        display_rx = fd_right[0] - 5
-        display_ty = fd_bottom[1] + 1
-        display_by = display_ty + int(fd_height*1.6)
-        digit_one_upper_length = int(fd_width / 6.7)
+        display_lx = fd_left[0] + 20
+        display_rx = fd_right[0] - int(fd_width*0.4)
+        display_ty = fd_bottom[1] + int(fd_height * 1.375)
+        display_by = display_ty + int(fd_height*0.55)
+        digit_one_upper_length = int(fd_width / 14)
         cnt_retrieval_mode = cv2.RETR_LIST
-        
+
     elif manual_displaybox_cnt is not None:
         # extract the thermostat display, apply a perspective transform
         # to it
