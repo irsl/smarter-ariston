@@ -23,6 +23,8 @@ email = os.environ["TAPO_EMAIL"]
 password = os.environ["TAPO_PASSWORD"]
 delay = int(os.getenv("TAPO_DELAY") or "3")
 only_when_unused = int(os.getenv("TAPO_ONLY_WHEN_UNUSED") or "0")
+tapo_power_threshold = int(os.getenv("TAPO_POWER_THRESHOLD") or "1200")
+
 
 def eprint(*args, **kwargs):
     print(*args, **kwargs, file=sys.stderr)
@@ -257,7 +259,7 @@ def do_the_job(ip, *states):
         re["energy_data"] = tp.getEnergyData(*ints)
     elif len(states) > 0:
         re["states"] = []
-        if only_when_unused and energy_usage["current_power"] >= 1000:
+        if only_when_unused and energy_usage["current_power"] >= tapo_power_threshold:
             raise Exception(f"TAPO_ONLY_WHEN_UNUSED is set, and current_power is: {energy_usage['current_power']}")
         remainingStates = len(states)    
         for state in states:
