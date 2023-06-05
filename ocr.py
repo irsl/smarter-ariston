@@ -44,7 +44,7 @@ def img_transform(cropped_image):
     #blur = cv2.GaussianBlur(gray,(3,3),0)
     #thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU )[1]
     
-    thresh = cv2.adaptiveThreshold(gray,255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 37, -30)
+    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 37, -30)
     
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 5))
     thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
@@ -342,7 +342,7 @@ def process_img(img_path):
             save_debug_img(aimage, img_basepath, "07-digit-cnt-"+str(d)+".png")
 
         # if the contour is sufficiently large, it must be a digit
-        if (w >= 10 and w <= 62) and (h >= 44 and h <= 79):
+        if (w >= 10 and w <= 62) and (h >= 44 and h <= 85):
             eprint("saving digit", d, x, y, w, h)
             digitCnts.append(c)
     if len(digitCnts) < 2:
@@ -359,9 +359,9 @@ def process_img(img_path):
         # extract the digit ROI
         (x, y, w, h) = cv2.boundingRect(c)
         eprint("bounding", d, x, y, w, h)
-        roi = thresh_cropped_test_img[y:y + h, x:x + w]
+        color_roi = cropped_test_img[y:y + h, x:x + w]
+        roi = img_transform(color_roi)
         if DEBUG_DIR:
-            color_roi = cropped_test_img[y:y + h, x:x + w]
             save_debug_img(roi, img_basepath, "07-digit-d"+str(d)+".png")
 
         # compute the width and height of each of the 7 segments
