@@ -29,6 +29,11 @@ CLEAN_OLDER_THAN_DAYS=int(os.getenv("CLEAN_OLDER_THAN_DAYS") or "30")
 CLEAN_SLEEP=int(os.getenv("CLEAN_SLEEP") or "86400")
 
 PERIODIC_QUERY_CRON=os.getenv("PERIODIC_QUERY_CRON") or "0 6-23 * * *" # https://github.com/kipe/pycron https://stackoverflow.com/questions/373335/how-do-i-get-a-cron-like-scheduler-in-python
+
+MODE_333 = int(os.getenv("MODE_333") or "0")
+if MODE_333:
+    PERIODIC_QUERY_CRON = "none"
+
 PERIODIC_ONLY_WHEN_UNUSED=int(os.getenv("PERIODIC_ONLY_WHEN_UNUSED") or "0")
 PERIODIC_FOLLOWUP_SLEEP=int(os.getenv("PERIODIC_FOLLOWUP_SLEEP") or "300")
 
@@ -111,7 +116,7 @@ def _query_temperature_locked(restart_is_fine = False, callback = None, save_pix
     
     if p.returncode == 0:
         result = json.loads(p.stdout)[0]
-        if result and not followup_thread:
+        if result and not MODE_333 and not followup_thread:
             # time to kick off a follow up thread
             followup_thread = threading.Thread(target=followup_logic, args=())
             followup_thread.start()
@@ -137,6 +142,10 @@ def _query_temperature_locked(restart_is_fine = False, callback = None, save_pix
         # Waiting a few seconds as it displays 88 at start
         time.sleep(3)
         return _query_temperature_locked(False, callback, save_pix)
+
+    if MODE_333 and result == 33:
+        eprint("display shows 33, ignoring")
+        result = None
 
     return (result, b_full_picture, b_display_box, now)
 
@@ -316,7 +325,7 @@ def init_db():
     db.commit()
     eprint("Database initialized")
 
-def cron_thread():
+def cron_thread():        
     if PERIODIC_QUERY_CRON == "none":
         eprint('Cron feature is disabled')
         return
@@ -330,6 +339,24 @@ def cron_thread():
                                          # to avoid running twice in one minute
         else:
             time.sleep(15)               # Check again in 15 seconds
+
+def mode333_thread():
+    eprint('Mode 333 thread started')
+    while True:
+        time.sleep(MODE_333)
+        while True:
+            eprint('Mode 333 query attempt')
+            x = query_temperature(restart_is_fine=False, save_pix=True)
+            if x[0]:
+                eprint('Mode 333 query attempt was successful:', x[0])
+                break
+            time.sleep(60)
+
+def cron_mode333_thread():
+    if MODE_333:
+        mode333_thread()
+    else:
+        cron_thread()
 
 def energy_thread():
     eprint('Energy thread started')
@@ -380,7 +407,7 @@ def energy_thread():
 
 def main():
     init_db()
-    threading.Thread(target=cron_thread, args=()).start()
+    threading.Thread(target=cron_mode333_thread, args=()).start()
     threading.Thread(target=cleanup_thread, args=()).start()
     threading.Thread(target=energy_thread, args=()).start()
     server = ThreadingHTTPServer(("0.0.0.0", LISTEN_PORT), StreamServer)
