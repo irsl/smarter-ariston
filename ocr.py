@@ -9,6 +9,7 @@ from collections import namedtuple
 import imutils
 from imutils.perspective import four_point_transform
 import numpy as np
+from collections import defaultdict
 
 DIGITS_LOOKUP = {
 	(1, 1, 1, 0, 1, 1, 1): 0,
@@ -174,6 +175,8 @@ def process_img(img_path):
     top_line_cnt = None
     left_curly_stuff_cnt = None
     
+    reference_cnts = defaultdict(list)
+    
     color = (0, 0, 255)
     i = 0
     for c in cnts:
@@ -190,250 +193,275 @@ def process_img(img_path):
         (x, y, w, h) = cv2.boundingRect(approx)
         l = len(approx)
         eprint("contour for log candidate", i, l, len(c), w, h)
-        if l == 3 and w > 1300 and w < 1450 and h > 80 and h < 120:
+        if l in [3, 4] and w > 1313 and w < 1450 and h > 80 and h < 120:
             eprint("potential top line found")
-            top_line_cnt = c
-            break
-        elif l == 6 and len(c) > 300 and c[0][0][0] / 600 and w > 300 and w < 340 and h > 125 and h < 150:
+            reference_cnts["top_line"].append(c)
+        elif l == 6 and len(c) > 300 and c[0][0][0] < 600 and w > 300 and w < 340 and h > 125 and h < 150:
             eprint("potential left_curly_stuff_cnt found")
-            left_curly_stuff_cnt = c
-            break
+            reference_cnts["left_curly_stuff"].append(c)
+        elif l == 6 and len(c) > 240 and c[0][0][0] > 600 and w > 300 and w < 340 and h > 125 and h < 150:
+            eprint("potential right_curly_stuff_cnt found")
+            reference_cnts["right_curly_stuff"].append(c)
         elif l == 4 and w > 260 and w < 285 and h > 160 and h < 170:
             eprint("potential top_helper_cnt found (inner)")
-            top_helper_cnt = c
-            break
+            reference_cnts["top_helper"].append(c)
         elif l == 6 and w >= 286 and w < 300 and h > 170 and h < 180:
             eprint("potential top_helper_cnt found (outer)")
-            outer_top_helper_cnt = c
-            break
+            reference_cnts["outer_top_helper"].append(c)
+            reference_cnts["outer_top_helper_new_pos"].append(c)
         elif l == 4 and w > 180 and w < 220:
             eprint("potential manual display boundary found")
-            manual_displaybox_cnt = c
-            break
-        elif ariston_logo_cnt is None and l in [5,6] and w < 100:
+            reference_cnts["manual_display"].append(c)
+        elif reference_cnts.get("ariston_logo") is None and l in [5,6] and w < 100:
             eprint("potential ariston logo found")
-            ariston_logo_cnt = c
-            # we dont break, we may find a better reference point
-            # break
+            reference_cnts["ariston_logo"].append(c)
 
-    if top_line_cnt is not None:
-        (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(top_line_cnt)
-        eprint("coordinates of top_line_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
-        box_width = int(fd_width / 8)
-        box_height = int(fd_width / 16)
-        display_lx = fd_left[0] + int(box_width * 4)
-        display_rx = display_lx + box_width
-        display_ty = fd_bottom[1] + int(box_height * 2.3)
-        display_by = display_ty + box_height
-        digit_one_upper_length = int(fd_width / 65)
-        cnt_retrieval_mode = cv2.RETR_LIST
-
-    elif left_curly_stuff_cnt is not None:
-        (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(left_curly_stuff_cnt)
-        eprint("coordinates of left_curly_stuff_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
-        box_width = int(fd_width / 2.1)
-        box_height = int(fd_width / 3.2)
-        display_lx = fd_right[0] + int(box_width * 1.3)
-        display_rx = display_lx + box_width
-        display_ty = fd_right[1]
-        display_by = display_ty + box_height
-        digit_one_upper_length = int(fd_width / 15)
-        cnt_retrieval_mode = cv2.RETR_LIST
-
-    elif outer_top_helper_cnt is not None:
-        (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(outer_top_helper_cnt)
-        eprint("coordinates of outer_top_helper_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
-        display_lx = fd_left[0] + 40
-        display_rx = fd_right[0] - int(fd_width*0.4)
-        display_ty = fd_bottom[1] + int(fd_height * 1.2)
-        display_by = display_ty + int(fd_height*0.55)
-        digit_one_upper_length = int(fd_width / 14)
-        cnt_retrieval_mode = cv2.RETR_LIST
-
-    elif top_helper_cnt is not None:
-        (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(top_helper_cnt)
-        eprint("coordinates of top_helper_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
-        display_lx = fd_left[0] + 20
-        display_rx = fd_right[0] - int(fd_width*0.4)
-        display_ty = fd_bottom[1] + int(fd_height * 1.375)
-        display_by = display_ty + int(fd_height*0.55)
-        digit_one_upper_length = int(fd_width / 14)
-        cnt_retrieval_mode = cv2.RETR_LIST
-
-    elif manual_displaybox_cnt is not None:
-        # extract the thermostat display, apply a perspective transform
-        # to it
-        #reshaped = manual_displaybox_cnt.reshape(-1, 1, 4, 2)
-        #warped = four_point_transform(gray, reshaped)
-        #output = four_point_transform(image, reshaped)
-        (alogo_left, alogo_right, alogo_top, alogo_bottom, alogo_width, alogo_height) = find_top_bottom(manual_displaybox_cnt)
-        if DEBUG_DIR:
-            eprint("manual display box cnt", alogo_left, alogo_right, alogo_top, alogo_bottom, alogo_width, alogo_height)
-            aimage = image.copy()
-            cv2.polylines(aimage, manual_displaybox_cnt, True, color, 3)
-            save_debug_img(aimage, img_basepath, "03-manual-displaybox.png")
-        display_lx = alogo_left[0] + int(alogo_width/10)
-        display_rx = alogo_right[0] - int(alogo_width/3.5) + 1
-        display_ty = alogo_top[1] + 20
-        display_by = alogo_bottom[1] - 20
-        cnt_retrieval_mode = cv2.RETR_LIST
-        # a regular digit has width around 50px; this division results width around 20px
-        digit_one_upper_length = int(alogo_width/10)
-
-    elif ariston_logo_cnt is not None:
-        (alogo_left, alogo_right, alogo_top, alogo_bottom, alogo_width, alogo_height) = find_top_bottom(ariston_logo_cnt)
-        if DEBUG_DIR:
-            eprint("ariston logo cnt", alogo_left, alogo_right, alogo_top, alogo_bottom, alogo_width, alogo_height)
-            aimage = image.copy()
-            cv2.polylines(aimage, ariston_logo_cnt, True, color, 3)
-            save_debug_img(aimage, img_basepath, "03-logo.png")
-        display_lx = alogo_right[0] + int(alogo_width*2.4)
-        display_rx = alogo_right[0] + int(alogo_width*4.8)
-        display_ty = alogo_bottom[1] + int(alogo_height*1.6)
-        display_by = alogo_bottom[1] + int(alogo_height*2.8)
-        cnt_retrieval_mode = cv2.RETR_EXTERNAL
-        digit_one_upper_length = int(alogo_width/3)        
-    else:
-        eprint("displaybox not found")
-        return
+    eprint("potential reference point categories", reference_cnts.keys())
+    cnt_counter = 0
+    for reference_category in ["top_line", "left_curly_stuff", "right_curly_stuff", "outer_top_helper_new_pos", "outer_top_helper", "top_helper", "manual_display", "ariston_logo"]:
+        cnts = reference_cnts.get(reference_category)
+        if cnts is None:
+            continue
+        eprint("trying to extract the digits using reference category", reference_category)
+        for ref_cnt in cnts:
         
-    eprint("digit_one_length", digit_one_upper_length)
-    display_box = np.array([
-        [ display_lx, display_ty ],  # top left
-        [ display_rx, display_ty ],  # top right
-        [ display_rx, display_by ],  # bottom right
-        [ display_lx, display_by ],  # bottom left
-    ])
-
-    if DEBUG_DIR:
-        eprint("display box", display_box)
-        aimage = image.copy()
-        cv2.polylines(aimage, [display_box], True, color, 3)
-        save_debug_img(aimage, img_basepath, "04-display-box-on-full.png")
-
-    cropped_test_img = image[display_ty:display_by, display_lx:display_rx]    
-    save_display_pic = os.getenv("SAVE_DISPLAY_PATH")
-    if save_display_pic:
-        cv2.imwrite(save_display_pic, cropped_test_img)
-    save_debug_img(cropped_test_img, img_basepath, "05-cropped-display-box.png")
-    thresh_cropped_test_img = img_transform(cropped_test_img)
-    save_debug_img(thresh_cropped_test_img, img_basepath, "06-cropped-threshed-display-box.png")
-
-    # find contours in the thresholded image, then initialize the
-    # digit contours lists
-    cnts = cv2.findContours(thresh_cropped_test_img.copy(), cnt_retrieval_mode, cv2.CHAIN_APPROX_SIMPLE)
-    cnts = imutils.grab_contours(cnts)
+            cnt_counter += 1
+            
+            eprint("reference category counter", cnt_counter)
+        
     
-    # sometimes when the picture is excellent quality we need to merge close contours
-    if len(cnts) >= 8:
-        cnts = agglomerative_cluster(cnts, 3)
-    
-    digitCnts = []
-    # loop over the digit area candidates
-    d = 0
-    for c in cnts:
-        d += 1
-        # compute the bounding box of the contour
-        (x, y, w, h) = cv2.boundingRect(c)
-        if DEBUG_DIR:
-            eprint("digit contour", d, x, y, w, h)
-            aimage = cropped_test_img.copy()
-            cv2.polylines(aimage, c, True, color, 3)
-            save_debug_img(aimage, img_basepath, "07-digit-cnt-"+str(d)+".png")
+            if reference_category == "top_line":
+                (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(ref_cnt)
+                eprint("coordinates of top_line_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
+                box_width = int(fd_width / 8)
+                box_height = int(fd_width / 16)
+                display_lx = fd_left[0] + int(box_width * 4)
+                display_rx = display_lx + box_width
+                display_ty = fd_bottom[1] + int(box_height * 2.3)
+                display_by = display_ty + box_height
+                digit_one_upper_length = int(fd_width / 65)
+                cnt_retrieval_mode = cv2.RETR_LIST
 
-        # if the contour is sufficiently large, it must be a digit
-        if (w >= 10 and w <= 62) and (h >= 44 and h <= 85):
-            eprint("saving digit", d, x, y, w, h)
-            digitCnts.append(c)
-    if len(digitCnts) < 2:
-        eprint("we didn't find enough digits")
-        return
-    digitCnts = sort_contours(digitCnts, method="left-to-right")[0]
-    result = ""
-    d = 0
-    # loop over each of the digits
-    for c in digitCnts:
-        d+=1
-        if d > 2:
-            break
-        # extract the digit ROI
-        (x, y, w, h) = cv2.boundingRect(c)
-        eprint("bounding", d, x, y, w, h)
-        color_roi = cropped_test_img[y:y + h, x:x + w]
-        roi = img_transform(color_roi)
-        if DEBUG_DIR:
-            save_debug_img(roi, img_basepath, "07-digit-d"+str(d)+".png")
+            elif reference_category == "left_curly_stuff":
+                (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(ref_cnt)
+                eprint("coordinates of left_curly_stuff_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
+                box_width = int(fd_width / 2.1)
+                box_height = int(fd_width / 3.2)
+                display_lx = fd_right[0] + int(box_width * 1.3)
+                display_rx = display_lx + box_width
+                display_ty = fd_right[1]
+                display_by = display_ty + box_height
+                digit_one_upper_length = int(fd_width / 15)
+                cnt_retrieval_mode = cv2.RETR_LIST
 
-        # compute the width and height of each of the 7 segments
-        # we are going to examine
-        (roiH, roiW) = roi.shape
-        (dW, dH) = (int(roiW * 0.21), int(roiH * 0.15))
-        dHC = int(roiH * 0.05)
-        
-        if w < digit_one_upper_length:
-            # this is super thin, probably digit 1. 20% is not enough
-            dW = dW * 3
+            elif reference_category == "right_curly_stuff":
+                (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(ref_cnt)
+                eprint("coordinates of right_curly_stuff_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
+                box_width = int(fd_width / 2.3)
+                box_height = int(fd_width / 3.4)
+                display_rx = fd_left[0] - int(box_width * 0.3)
+                display_lx = display_rx - box_width
+                display_ty = fd_left[1] - 20
+                display_by = display_ty + box_height
+                digit_one_upper_length = int(fd_width / 15)
+                cnt_retrieval_mode = cv2.RETR_LIST
+                
+            elif reference_category == "outer_top_helper":
+                (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(ref_cnt)
+                eprint("coordinates of outer_top_helper_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
+                display_lx = fd_left[0] + 40
+                display_rx = fd_right[0] - int(fd_width*0.4)
+                display_ty = fd_bottom[1] + int(fd_height * 1.2)
+                display_by = display_ty + int(fd_height*0.55)
+                digit_one_upper_length = int(fd_width / 14)
+                cnt_retrieval_mode = cv2.RETR_LIST
 
-        # define the set of 7 segments
-        segments = [
-            ((0, 0), (w, dH)),	                         # top
-            ((0, 0), (dW, h // 2)),	                     # top-left
-            ((w - dW, 0), (w, h // 2)),	                 # top-right
-            ((0, (h // 2) - dHC) , (w, (h // 2) + dHC)), # center
-            ((0, h // 2), (dW, h)),	                     # bottom-left
-            ((w - int(dW * 1.2), h // 2), (w- int(dW * 0.2), h)),	                 # bottom-right
-            ((0, h - int(dH*1.0)), (w, h-int(dH*0.0)))                        # bottom
-        ]
-        on = [0] * len(segments)
-        
-        # loop over the segments
-        for (i, ((xA, yA), (xB, yB))) in enumerate(segments):
+            elif reference_category == "outer_top_helper_new_pos":
+                (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(ref_cnt)
+                eprint("coordinates of outer_top_helper_new_pos_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
+                display_lx = fd_left[0] + int(fd_width/3.2)
+                display_rx = fd_right[0] - int(fd_width*0.25)
+                display_ty = fd_bottom[1] + int(fd_height * 1.5)
+                display_by = display_ty + int(fd_height*0.5)
+                digit_one_upper_length = int(fd_width / 14)
+                cnt_retrieval_mode = cv2.RETR_LIST
+
+            elif reference_category == "top_helper":
+                (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(ref_cnt)
+                eprint("coordinates of top_helper_cnt:", fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height)
+                display_lx = fd_left[0] + 20
+                display_rx = fd_right[0] - int(fd_width*0.4)
+                display_ty = fd_bottom[1] + int(fd_height * 1.375)
+                display_by = display_ty + int(fd_height*0.55)
+                digit_one_upper_length = int(fd_width / 14)
+                cnt_retrieval_mode = cv2.RETR_LIST
+
+            elif reference_category == "manual_display":
+                # extract the thermostat display, apply a perspective transform
+                # to it
+                #reshaped = manual_displaybox_cnt.reshape(-1, 1, 4, 2)
+                #warped = four_point_transform(gray, reshaped)
+                #output = four_point_transform(image, reshaped)
+                (alogo_left, alogo_right, alogo_top, alogo_bottom, alogo_width, alogo_height) = find_top_bottom(ref_cnt)
+                display_lx = alogo_left[0] + int(alogo_width/10)
+                display_rx = alogo_right[0] - int(alogo_width/3.5) + 1
+                display_ty = alogo_top[1] + 20
+                display_by = alogo_bottom[1] - 20
+                cnt_retrieval_mode = cv2.RETR_LIST
+                # a regular digit has width around 50px; this division results width around 20px
+                digit_one_upper_length = int(alogo_width/10)
+
+            elif reference_category == "ariston_logo":
+                (alogo_left, alogo_right, alogo_top, alogo_bottom, alogo_width, alogo_height) = find_top_bottom(ref_cnt)
+                display_lx = alogo_right[0] + int(alogo_width*2.4)
+                display_rx = alogo_right[0] + int(alogo_width*4.8)
+                display_ty = alogo_bottom[1] + int(alogo_height*1.6)
+                display_by = alogo_bottom[1] + int(alogo_height*2.8)
+                cnt_retrieval_mode = cv2.RETR_EXTERNAL
+                digit_one_upper_length = int(alogo_width/3)        
+            else:
+                raise Exception("should never happen")
+                
+            eprint("digit_one_length", digit_one_upper_length)
+            display_box = np.array([
+                [ display_lx, display_ty ],  # top left
+                [ display_rx, display_ty ],  # top right
+                [ display_rx, display_by ],  # bottom right
+                [ display_lx, display_by ],  # bottom left
+            ])
+
             if DEBUG_DIR:
-                acolor_roi = cv2.rectangle(color_roi.copy(), (xA, yA), (xB, yB), (0, 0, 255), 2)
-                save_debug_img(acolor_roi, img_basepath, "07-digit-d"+str(d)+"-"+str(i)+".png")
-            # extract the segment ROI, count the total number of
-            # thresholded pixels in the segment, and then compute
-            # the area of the segment
-            segROI = roi[yA:yB, xA:xB]
-            total = cv2.countNonZero(segROI)
-            area = (xB - xA) * (yB - yA)
+                eprint("display box", reference_category, display_box)
+                aimage = image.copy()
+                cv2.polylines(aimage, [display_box], True, color, 3)
+                save_debug_img(aimage, img_basepath, f"04-{reference_category}-{cnt_counter}-display-box-on-full.png")
 
-            # if the total number of non-zero pixels is greater than
-            # 50% of the area, mark the segment as "on"
-            eprint("flood", d, i, SEGMENT_NAMES[i], total / float(area))
-            if total / float(area) > MIN_FLOOD_PERCENTAGE:
-                on[i]= 1
+            cropped_test_img = image[display_ty:display_by, display_lx:display_rx]    
+            save_display_pic = os.getenv("SAVE_DISPLAY_PATH")
+            if save_display_pic:
+                cv2.imwrite(save_display_pic, cropped_test_img)
+            save_debug_img(cropped_test_img, img_basepath, f"05-{reference_category}-{cnt_counter}-cropped-display-box.png")
+            thresh_cropped_test_img = img_transform(cropped_test_img)
+            save_debug_img(thresh_cropped_test_img, img_basepath, f"06-{reference_category}-{cnt_counter}-cropped-threshed-display-box.png")
 
-        if w < digit_one_upper_length: # this is super thin, probably digit 1. the horizontal ones dont make a sense here
-            on[0] = 0 # top
-            on[3] = 0 # center
-            on[6] = 0 # bottom
-            on[2] = 1 if on[1] or on[2] else 0
-            on[5] = 1 if on[4] or on[5] else 0
-            on[1] = 0
-            on[4] = 0
+            # find contours in the thresholded image, then initialize the
+            # digit contours lists
+            cnts = cv2.findContours(thresh_cropped_test_img.copy(), cnt_retrieval_mode, cv2.CHAIN_APPROX_SIMPLE)
+            cnts = imutils.grab_contours(cnts)
+            
+            # sometimes when the picture is excellent quality we need to merge close contours
+            if len(cnts) >= 8:
+                cnts = agglomerative_cluster(cnts, 3)
+            
+            digitCnts = []
+            # loop over the digit area candidates
+            d = 0
+            for c in cnts:
+                d += 1
+                # compute the bounding box of the contour
+                (x, y, w, h) = cv2.boundingRect(c)
+                if DEBUG_DIR:
+                    eprint("digit contour", d, x, y, w, h)
+                    aimage = cropped_test_img.copy()
+                    cv2.polylines(aimage, c, True, color, 3)
+                    save_debug_img(aimage, img_basepath, f"07-{reference_category}-{cnt_counter}-digit-cnt-{d}.png")
 
-        # lookup the digit and draw it on the image
-        digit = DIGITS_LOOKUP.get(tuple(on))
-        eprint("digits slices", on, digit)
-        if digit is None:
-            # the bottom of the display may have some noise, trying to workaround it
-            (xA, yA), (xB, yB) = ((0, h - int(dH*1.3)), (w, h-int(dH*0.3)))
-            segROI = roi[yA:yB, xA:xB]
-            total = cv2.countNonZero(segROI)
-            area = (xB - xA) * (yB - yA)
+                # if the contour is sufficiently large, it must be a digit
+                if (w >= 10 and w <= 62) and (h >= 44 and h <= 85):
+                    eprint("saving digit", d, x, y, w, h)
+                    digitCnts.append(c)
+            if len(digitCnts) < 2:
+                eprint("we didn't find enough digits")
+                continue
+            digitCnts = sort_contours(digitCnts, method="left-to-right")[0]
+            result = ""
+            failure = False
+            d = 0
+            # loop over each of the digits
+            for c in digitCnts:
+                d+=1
+                if d > 2:
+                    break
+                # extract the digit ROI
+                (x, y, w, h) = cv2.boundingRect(c)
+                eprint("bounding", d, x, y, w, h)
+                color_roi = cropped_test_img[y:y + h, x:x + w]
+                roi = img_transform(color_roi)
+                if DEBUG_DIR:
+                    save_debug_img(roi, img_basepath, f"07-{reference_category}-{cnt_counter}-digit-d{d}.png")
 
-            # if the total number of non-zero pixels is greater than
-            # 50% of the area, mark the segment as "on"
-            eprint("retried flood", d, i, SEGMENT_NAMES[i], total / float(area))
-            if total / float(area) > MIN_FLOOD_PERCENTAGE:
-                on[i]= 1
-            digit = DIGITS_LOOKUP.get(tuple(on))
-            if not digit:
-                return
-        result += str(digit)
+                # compute the width and height of each of the 7 segments
+                # we are going to examine
+                (roiH, roiW) = roi.shape
+                (dW, dH) = (int(roiW * 0.21), int(roiH * 0.15))
+                dHC = int(roiH * 0.05)
+                
+                if w < digit_one_upper_length:
+                    # this is super thin, probably digit 1. 20% is not enough
+                    dW = dW * 3
 
-    return int(result)
+                # define the set of 7 segments
+                segments = [
+                    ((0, 0), (w, dH)),	                         # top
+                    ((0, 0), (dW, h // 2)),	                     # top-left
+                    ((w - dW, 0), (w, h // 2)),	                 # top-right
+                    ((0, (h // 2) - dHC) , (w, (h // 2) + dHC)), # center
+                    ((0, h // 2), (dW, h)),	                     # bottom-left
+                    ((w - int(dW * 1.2), h // 2), (w- int(dW * 0.2), h)),	                 # bottom-right
+                    ((0, h - int(dH*1.0)), (w, h-int(dH*0.0)))                        # bottom
+                ]
+                on = [0] * len(segments)
+                
+                # loop over the segments
+                for (i, ((xA, yA), (xB, yB))) in enumerate(segments):
+                    if DEBUG_DIR:
+                        acolor_roi = cv2.rectangle(color_roi.copy(), (xA, yA), (xB, yB), (0, 0, 255), 2)
+                        save_debug_img(acolor_roi, img_basepath, f"07-{reference_category}-{cnt_counter}-digit-d{d}-{i}.png")
+                    # extract the segment ROI, count the total number of
+                    # thresholded pixels in the segment, and then compute
+                    # the area of the segment
+                    segROI = roi[yA:yB, xA:xB]
+                    total = cv2.countNonZero(segROI)
+                    area = (xB - xA) * (yB - yA)
+
+                    # if the total number of non-zero pixels is greater than
+                    # 50% of the area, mark the segment as "on"
+                    eprint("flood", d, i, SEGMENT_NAMES[i], total / float(area))
+                    if total / float(area) > MIN_FLOOD_PERCENTAGE:
+                        on[i]= 1
+
+                if w < digit_one_upper_length: # this is super thin, probably digit 1. the horizontal ones dont make a sense here
+                    on[0] = 0 # top
+                    on[3] = 0 # center
+                    on[6] = 0 # bottom
+                    on[2] = 1 if on[1] or on[2] else 0
+                    on[5] = 1 if on[4] or on[5] else 0
+                    on[1] = 0
+                    on[4] = 0
+
+                # lookup the digit and draw it on the image
+                digit = DIGITS_LOOKUP.get(tuple(on))
+                eprint("digits slices", on, digit)
+                if digit is None:
+                    # the bottom of the display may have some noise, trying to workaround it
+                    (xA, yA), (xB, yB) = ((0, h - int(dH*1.3)), (w, h-int(dH*0.3)))
+                    segROI = roi[yA:yB, xA:xB]
+                    total = cv2.countNonZero(segROI)
+                    area = (xB - xA) * (yB - yA)
+
+                    # if the total number of non-zero pixels is greater than
+                    # 50% of the area, mark the segment as "on"
+                    eprint("retried flood", d, i, SEGMENT_NAMES[i], total / float(area))
+                    if total / float(area) > MIN_FLOOD_PERCENTAGE:
+                        on[i]= 1
+                    digit = DIGITS_LOOKUP.get(tuple(on))
+                    if not digit:
+                        failure = True
+                        break
+                result += str(digit)
+            if failure:
+                continue
+            return int(result)
 
 
 def do_the_job(*imgs):
