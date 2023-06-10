@@ -199,7 +199,7 @@ def process_img(img_path):
         elif l == 6 and len(c) > 300 and c[0][0][0] < 600 and w > 300 and w < 340 and h > 125 and h < 150:
             eprint("potential left_curly_stuff_cnt found")
             reference_cnts["left_curly_stuff"].append(c)
-        elif l == 6 and len(c) > 240 and c[0][0][0] > 600 and w > 300 and w < 340 and h > 125 and h < 150:
+        elif l == 6 and len(c) > 230 and c[0][0][0] > 600 and w > 300 and w < 340 and h > 125 and h < 150:
             eprint("potential right_curly_stuff_cnt found")
             reference_cnts["right_curly_stuff"].append(c)
         elif l == 4 and w > 260 and w < 285 and h > 160 and h < 170:
@@ -218,7 +218,7 @@ def process_img(img_path):
 
     eprint("potential reference point categories", reference_cnts.keys())
     cnt_counter = 0
-    for reference_category in ["top_line", "left_curly_stuff", "right_curly_stuff", "outer_top_helper_new_pos", "outer_top_helper", "top_helper", "manual_display", "ariston_logo"]:
+    for reference_category in ["left_curly_stuff", "right_curly_stuff", "outer_top_helper_new_pos", "outer_top_helper", "top_helper", "top_line", "manual_display", "ariston_logo"]:
         cnts = reference_cnts.get(reference_category)
         if cnts is None:
             continue
