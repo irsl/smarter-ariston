@@ -205,7 +205,7 @@ def process_img(img_path):
         elif l == 4 and w > 260 and w < 285 and h > 160 and h < 170:
             eprint("potential top_helper_cnt found (inner)")
             reference_cnts["top_helper"].append(c)
-        elif l == 6 and w >= 286 and w < 300 and h > 170 and h < 180:
+        elif l in [4,6] and w >= 286 and w < 300 and h > 170 and h < 195:
             eprint("potential top_helper_cnt found (outer)")
             reference_cnts["outer_top_helper"].append(c)
             reference_cnts["outer_top_helper_new_pos"].append(c)
