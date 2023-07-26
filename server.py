@@ -20,6 +20,7 @@ import sqlite3
 import pycron
 from datetime import datetime
 
+LIVE_STREAM_URL=os.getenv("LIVE_STREAM_URL")
 LISTEN_PORT=int(os.getenv("LISTEN_PORT") or "80")
 DATADIR=os.getenv("DATADIR") or "/tmp"
 DB_PATH=os.getenv("DB_PATH") or os.path.join(DATADIR,"water.db")
@@ -277,6 +278,12 @@ class StreamServer(BaseHTTPRequestHandler):
         r = self._fetch_temp(1)[0]["y"]
         self._send_json_response(r)
 
+    def serve_live(self):
+        r = {}
+        if LIVE_STREAM_URL:
+            r["url"] = LIVE_STREAM_URL
+        self._send_json_response(r)
+        
     def do_POST(self):
         if self.path == "/temperature":
             self.serve_temperature()
@@ -288,6 +295,10 @@ class StreamServer(BaseHTTPRequestHandler):
             self.send_response(307)
             self.send_header("Location", "/index.html")
             self.end_headers()
+            return
+
+        if self.path == "/live":
+            self.serve_live()
             return
 
         if self.path == "/fetch":

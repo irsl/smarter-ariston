@@ -51,6 +51,9 @@
 </div>
 <br style="clear:both"/>
 
+<div id="live">
+</div>
+
 <canvas id="myChartTemp" style="width:100%;max-height:400px"></canvas> 
 
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
@@ -201,5 +204,11 @@ function refreshMetadata() {
 
 refreshMetadata()
 refreshChart(true);
+
+$.getJSON("/live", function(data) {
+  if(data.url) {
+     $("#live").html("<iframe src='"+data.url+"'></iframe>")
+  }
+})
 </script>
 </body></html>
