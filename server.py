@@ -242,7 +242,7 @@ class StreamServer(BaseHTTPRequestHandler):
         
     def _fetch_temp(self, limit = None, now = 0):
         if not now:
-            now = int(time.time)
+            now = int(time.time())
         n = now - 3 * 86400
         response = []
         db = get_db()
@@ -252,7 +252,7 @@ class StreamServer(BaseHTTPRequestHandler):
     
     def _fetch_energy(self, limit = None, now = 0):
         if not now:
-            now = int(time.time)
+            now = int(time.time())
         n = now - 3 * 86400
         response = []
         db = get_db()
