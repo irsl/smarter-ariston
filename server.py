@@ -18,6 +18,7 @@ import threading
 import glob
 import sqlite3
 import pycron
+import signal
 from datetime import datetime
 
 LIVE_STREAM_URL=os.getenv("LIVE_STREAM_URL")
@@ -111,7 +112,7 @@ def _query_temperature_locked(restart_is_fine = False, callback = None, save_pix
         env["SAVE_DISPLAY_PATH"] = display_box
     acallback("Running getdigits")
     eprint(GETDIGITS_PATH, full_picture)
-    p = subprocess.run([GETDIGITS_PATH, full_picture], env=env, stdout=subprocess.PIPE)
+    p = subprocess.run([GETDIGITS_PATH, full_picture], env=env, stdout=subprocess.PIPE, start_new_session=True)
     if not save_pix:
         os.unlink(full_picture)
     
