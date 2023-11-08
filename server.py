@@ -112,12 +112,16 @@ def _query_temperature_locked(restart_is_fine = False, callback = None, save_pix
         env["SAVE_DISPLAY_PATH"] = display_box
     acallback("Running getdigits")
     eprint(GETDIGITS_PATH, full_picture)
-    p = subprocess.run([GETDIGITS_PATH, full_picture], env=env, stdout=subprocess.PIPE, start_new_session=True)
+    p = subprocess.Popen([GETDIGITS_PATH, full_picture], env=env, stdout=subprocess.PIPE, start_new_session=True)
+    try:
+        (p_stdout, p_stderr) = p.communicate()
+    except:
+        p.returncode = 143 # timeout
     if not save_pix:
         os.unlink(full_picture)
     
     if p.returncode == 0:
-        result = json.loads(p.stdout)[0]
+        result = json.loads(p_stdout)[0]
         if result and not MODE_333 and not followup_thread:
             # time to kick off a follow up thread
             followup_thread = threading.Thread(target=followup_logic, args=())

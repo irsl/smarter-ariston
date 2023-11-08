@@ -261,7 +261,7 @@ def do_the_job(ip, *states):
         re["states"] = []
         if only_when_unused and energy_usage["current_power"] >= tapo_power_threshold:
             raise Exception(f"TAPO_ONLY_WHEN_UNUSED is set, and current_power is: {energy_usage['current_power']}")
-        remainingStates = len(states)    
+        remainingStates = len(states)
         for state in states:
             if state == "on":
                 re["states"].append(tp.turnOn())
