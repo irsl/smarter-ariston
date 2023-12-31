@@ -177,6 +177,8 @@ def process_img(img_path):
     
     reference_cnts = defaultdict(list)
     
+    left_curly_ty_shift = 0
+    right_curly_ty_shift = 0
     color = (0, 0, 255)
     i = 0
     for c in cnts:
@@ -199,9 +201,19 @@ def process_img(img_path):
         elif l == 6 and len(c) > 300 and c[0][0][0] < 600 and w > 300 and w < 340 and h > 125 and h < 150:
             eprint("potential left_curly_stuff_cnt found")
             reference_cnts["left_curly_stuff"].append(c)
+            left_curly_ty_shift = 0
+        elif l == 6 and len(c) > 240 and c[0][0][0] < 600 and w > 220 and w < 260 and h > 125 and h < 150:
+            eprint("potential left_curly_stuff_cnt 2 found")
+            reference_cnts["left_curly_stuff"].append(c)
+            left_curly_ty_shift = 10
         elif l == 6 and len(c) > 230 and c[0][0][0] > 600 and w > 300 and w < 340 and h > 125 and h < 150:
             eprint("potential right_curly_stuff_cnt found")
             reference_cnts["right_curly_stuff"].append(c)
+            right_curly_ty_shift = -20
+        elif l == 6 and len(c) > 180 and c[0][0][0] > 600 and w > 250 and w < 300 and h > 125 and h < 150:
+            eprint("potential right_curly_stuff_cnt 2 found")
+            reference_cnts["right_curly_stuff"].append(c)
+            right_curly_ty_shift = 5
         elif l == 4 and w > 260 and w < 285 and h > 160 and h < 170:
             eprint("potential top_helper_cnt found (inner)")
             reference_cnts["top_helper"].append(c)
@@ -218,7 +230,7 @@ def process_img(img_path):
 
     eprint("potential reference point categories", reference_cnts.keys())
     cnt_counter = 0
-    for reference_category in ["left_curly_stuff", "right_curly_stuff", "outer_top_helper_new_pos", "outer_top_helper", "top_helper", "top_line", "manual_display", "ariston_logo"]:
+    for reference_category in ["left_curly_stuff",  "right_curly_stuff", "outer_top_helper_new_pos", "outer_top_helper", "top_helper", "top_line", "manual_display", "ariston_logo"]:
         cnts = reference_cnts.get(reference_category)
         if cnts is None:
             continue
@@ -249,7 +261,7 @@ def process_img(img_path):
                 box_height = int(fd_width / 3.2)
                 display_lx = fd_right[0] + int(box_width * 1.3)
                 display_rx = display_lx + box_width
-                display_ty = fd_right[1]
+                display_ty = fd_right[1] + left_curly_ty_shift
                 display_by = display_ty + box_height
                 digit_one_upper_length = int(fd_width / 15)
                 cnt_retrieval_mode = cv2.RETR_LIST
@@ -261,10 +273,11 @@ def process_img(img_path):
                 box_height = int(fd_width / 3.4)
                 display_rx = fd_left[0] - int(box_width * 0.3)
                 display_lx = display_rx - box_width
-                display_ty = fd_left[1] - 20
+                display_ty = fd_left[1] + right_curly_ty_shift
                 display_by = display_ty + box_height
                 digit_one_upper_length = int(fd_width / 15)
                 cnt_retrieval_mode = cv2.RETR_LIST
+
                 
             elif reference_category == "outer_top_helper":
                 (fd_left, fd_right, fd_top, fd_bottom, fd_width, fd_height) = find_top_bottom(ref_cnt)

@@ -165,7 +165,8 @@ def _query_temperature(restart_is_fine = False, callback = None, save_pix = Fals
         return re
     finally:
         tlock.release()
-        
+
+
 def query_temperature(restart_is_fine = False, callback = None, save_pix = False):
     r = _query_temperature(restart_is_fine, callback, save_pix)
     temp = r[0]
@@ -174,10 +175,16 @@ def query_temperature(restart_is_fine = False, callback = None, save_pix = False
         eprint("Persisting result", now, temp)
         db = get_db()
         cur = db.cursor()
-        cur.execute("INSERT INTO temperature (ts, temp) VALUES(?,?)", (now, temp))
+        temps = list(db.execute("SELECT temp, ts FROM temperature WHERE ts > strftime('%s', datetime('now', '-1 Hour')) ORDER BY ts DESC LIMIT 2"))
+        if len(temps) == 2 and temps[0][0] == temps[1][0] and temp == temps[0][0]:
+           eprint("Shifting the most recent temperature value in the db", now, temps[0][1], temp)
+           # we can shift the most recent one
+           cur.execute("UPDATE temperature SET ts=? WHERE ts=?", (now, temps[0][1]))
+        else:
+           eprint("Persisting a new temperature entry in the dba, now, temp")
+           cur.execute("INSERT INTO temperature (ts, temp) VALUES(?,?)", (now, temp))
         db.commit()
     return r
-
 
 
 class StreamServer(BaseHTTPRequestHandler):
