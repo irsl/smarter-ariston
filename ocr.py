@@ -194,7 +194,7 @@ def process_img(img_path):
         approx = cv2.approxPolyDP(c, 0.02 * peri, True)
         (x, y, w, h) = cv2.boundingRect(approx)
         l = len(approx)
-        eprint("contour for log candidate", i, l, len(c), w, h)
+        eprint("contour for log candidate", i, l, len(c), c[0][0][0], w, h)
         if l in [3, 4] and w > 1313 and w < 1450 and h > 80 and h < 120:
             eprint("potential top line found")
             reference_cnts["top_line"].append(c)
@@ -202,15 +202,19 @@ def process_img(img_path):
             eprint("potential left_curly_stuff_cnt found")
             reference_cnts["left_curly_stuff"].append(c)
             left_curly_ty_shift = 0
-        elif l == 6 and len(c) > 240 and c[0][0][0] < 600 and w > 220 and w < 260 and h > 125 and h < 150:
+        elif l == 6 and len(c) > 200 and c[0][0][0] < 600 and w > 220 and w < 260 and h > 125 and h < 150:
             eprint("potential left_curly_stuff_cnt 2 found")
             reference_cnts["left_curly_stuff"].append(c)
             left_curly_ty_shift = 10
+        elif l == 7 and len(c) > 200 and c[0][0][0] < 600 and w > 220 and w < 260 and h > 125 and h < 150:
+            eprint("potential left_curly_stuff_cnt 3 found")
+            reference_cnts["left_curly_stuff"].append(c)
+            left_curly_ty_shift = 14
         elif l == 6 and len(c) > 230 and c[0][0][0] > 600 and w > 300 and w < 340 and h > 125 and h < 150:
             eprint("potential right_curly_stuff_cnt found")
             reference_cnts["right_curly_stuff"].append(c)
             right_curly_ty_shift = -20
-        elif l == 6 and len(c) > 180 and c[0][0][0] > 600 and w > 250 and w < 300 and h > 125 and h < 150:
+        elif l >= 6 and l <= 7 and len(c) > 180 and c[0][0][0] > 600 and w > 250 and w < 300 and h > 125 and h < 160:
             eprint("potential right_curly_stuff_cnt 2 found")
             reference_cnts["right_curly_stuff"].append(c)
             right_curly_ty_shift = 5
